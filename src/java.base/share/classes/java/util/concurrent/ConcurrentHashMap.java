@@ -289,7 +289,8 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * contention. Secondary goals are to keep space consumption about
      * the same or better than java.util.HashMap, and to support high
      * initial insertion rates on an empty table by many threads.
-     *
+     * 这个哈希表的主要设计目标是在维护并发读取（通常指get()方法，但也包括迭代器和相关方法）的同时，最小化更新操作的争用。
+     * 次要目标是保持空间消耗与java.util.HashMap相同或更优，并支持在多线程下对空表进行高初始插入率。
      * This map usually acts as a binned (bucketed) hash table. Each
      * key-value mapping is held in a Node. Most nodes are instances
      * of the basic Node class with hash, key, value, and next
@@ -305,7 +306,12 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * fields. (These special nodes are either uncommon or transient,
      * so the impact of carrying around some unused fields is
      * insignificant.)
-     *
+     * 此映射通常表现为分桶（散列表）。每个键值对存储在一个Node中。大多数节点是基本Node类的实例，具有hash、key、value和next字段。
+     * 但是，存在各种子类：TreeNodes以平衡树而非链表形式排列；TreeBins持有TreeNodes集合的根节点；
+     * ForwardingNodes在调整大小期间位于桶的头部；
+     * eservationNodes用作computeIfAbsent及其相关方法中建立值的占位符。这些特殊节点不持有常规用户键、值或hash，
+     * 并且由于它们有负的hash字段和null的key和value字段，在搜索等过程中容易区分。
+     * （这些特殊节点要么不常见要么是暂时的，因此携带一些未使用字段的影响微不足道。）
      * The table is lazily initialized to a power-of-two size upon the
      * first insertion. Each bin in the table normally contains a
      * list of Nodes (most often, the list has only zero or one Node).
@@ -313,12 +319,14 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * CASes. Because there is no other way to arrange this without
      * adding further indirections, we use intrinsics
      * (jdk.internal.misc.Unsafe) operations.
-     *
+     * 表在第一次插入时懒惰地初始化为2的幂次大小。表中的每个桶通常包含一个Node列表（大多数情况下，列表只有一个或没有Node）。表的访问需要volatile
+     * /原子读写和CAS操作。因为没有其他方式可以安排这一点而不增加更多的间接性，我们使用内联操作（如jdk.internal.misc.Unsafe）。
      * We use the top (sign) bit of Node hash fields for control
      * purposes -- it is available anyway because of addressing
      * constraints. Nodes with negative hash fields are specially
      * handled or ignored in map methods.
-     *
+     * 我们使用Node的hash字段的最高位（符号位）作为控制用途——无论如何这是可用的，因为受
+     * 到寻址限制。在映射方法中，具有负数hash字段的节点会被特别处理或忽略。
      * Insertion (via put or its variants) of the first node in an
      * empty bin is performed by just CASing it to the bin. This is
      * by far the most common case for put operations under most
@@ -328,7 +336,10 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * each bin, so instead use the first node of a bin list itself as
      * a lock. Locking support for these locks relies on builtin
      * "synchronized" monitors.
-     *
+     * 在空桶中插入第一个节点（通过put或其变体）是通过将它CAS（Compare and
+     * Swap）到桶中完成的。这在大多数键/散列分布下，是put操作中最常见的场景。其他的更新操作（插入、删除和替换）需要锁。
+     * 我们不想浪费空间去为每个桶关联一个独立的锁对象，所以相反，我们使用桶列表的第一个节点本身作为锁。这些锁的锁定支持依赖于内置的“synchronized”
+     * 监视器。
      * Using the first node of a list as a lock does not by itself
      * suffice though: When a node is locked, any update must first
      * validate that it is still the first node after locking it, and
@@ -348,7 +359,13 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * granularity. Ignoring variance, the expected occurrences of
      * list size k are (exp(-0.5) * pow(0.5, k) / factorial(k)). The
      * first values are:
-     *
+     * 单纯地使用列表中的第一个节点作为锁并不足够：当一个节点被锁定后，任何更新首先必须验证它在锁定之后仍然是第一个节点，如果不是则需要重试。
+     * 因为新节点总是被添加到列表末尾，一旦一个节点成为桶中的第一个节点，它会一直保持第一位直到被删除或者桶在调整大小时失效。
+     * 
+     * 每个桶锁的主要缺点是，受同一锁保护的桶列表中的其他节点上的其他更新操作可能会停滞，例如当用户定义的equals()方法或映射函数执行时间过长。然而，统计上
+     * ，在随机散列码的情况下，这不是一个常见问题。理想情况下，桶中的节点频率遵循泊松分布（http://en.wikipedia.org/wiki/
+     * Poisson_distribution），平均参数约为0.5，考虑到调整大小的阈值为0.75，尽管由于调整大小的粒度导致方差较大。忽略方差，
+     * 列表大小为k的期望出现次数是 (exp(-0.5) * pow(0.5, k) / factorial(k))。前几个值是：
      * 0: 0.60653066
      * 1: 0.30326533
      * 2: 0.07581633
@@ -381,7 +398,13 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * TreeBin nodes (TreeNodes) also maintain the same "next"
      * traversal pointers as regular nodes, so can be traversed in
      * iterators in the same way.
-     *
+     * 实际遇到的散列码分布有时会显著偏离均匀随机性。这包括N >(1<<30)的情况，因此某些键必然会发生冲突。同样适用于那些设计拙劣或恶意使用的情况，
+     * 其中多个键被设计为具有相同的散列码或仅在屏蔽掉的高位上不同的情况。
+     * 因此，我们采用了一种后备策略，当桶中的节点数量超过某个阈值时应用。这些TreeBins使用平衡树来存储节点（一种红黑树的特化形式），将搜索时间限制在O(
+     * log N)。在TreeBin中的每次搜索步骤至少比在常规列表中慢两倍，但是考虑到N不能超过(1<<64)（在耗尽地址之前），这将搜索步骤、
+     * 锁持有时间等限制在合理的常数值（大约每操作最坏情况下检查100个节点），只要键是可比较的（这是非常常见的——如String,
+     * Long等）。TreeBin节点（即TreeNodes）还维护与普通节点相同的"next"遍历指针，因此可以在迭代器中以相同的方式进行遍历。
+     * 
      * The table is resized when occupancy exceeds a percentage
      * threshold (nominally, 0.75, but see below). Any thread
      * noticing an overfull bin may assist in resizing after the
@@ -408,6 +431,15 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * forwarding node, access and update operations restart, using
      * the new table.
      *
+     * 
+     * 当占用率超过一定百分比阈值时（名义上是0.75，但见下文），表格会进行扩容。任何注意到桶溢出的线程在初始化线程分配并设置替换数组后，可以协助进行扩容。然而
+     * ，为了避免阻塞，这些其他线程可以继续进行插入等操作。使用TreeBins保护我们免受在扩容过程中过度填充带来的最坏影响。扩容通过将桶从原表格转移到新表格，
+     * 一次一个地进行。但是，线程在这样做之前会声明一小块索引（通过transferIndex字段），从而减少竞争。
+     * sizeCtl字段中的一个代号戳确保了扩容不会重叠。因为我们使用的是2的幂次扩容，来自每个桶的元素要么保持在同一索引，要么移动一个2的幂次偏移量。
+     * 我们通过捕捉旧节点可以被重用的情况来避免不必要的节点创建，因为它们的next字段不会改变。平均而言，当表格翻倍时，只有大约六分之一的节点需要克隆。
+     * 它们替换的节点一旦不再被可能正在并发遍历表格的读取线程引用，就将可被垃圾收集。在转移后，旧表格的桶只包含一个特殊的转发节点（其hash字段为"MOVED"
+     * ），该节点将新表格作为其键。在遇到转发节点时，访问和更新操作将重启，使用新表格。
+     * 
      * Each bin transfer requires its bin lock, which can stall
      * waiting for locks while resizing. However, because other
      * threads can join in and help resize rather than contend for
@@ -427,7 +459,14 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * So Traversers use a simple caching scheme to avoid creating so
      * many new TableStack nodes. (Thanks to Peter Levart for
      * suggesting use of a stack here.)
-     *
+     * 
+     * 每个桶的转移都需要其桶锁，这可能会在扩容时等待锁而被阻塞。然而，因为其他线程可以加入并帮助扩容，而不是争夺锁，随着扩容的进行，平均累积的等待时间变得更短。
+     * 转移操作还必须确保旧表和新表中所有可访问的桶都能被任何遍历所使用。这在一定程度上是通过从最后一个桶（table.length -
+     * 1）开始向上至第一个桶进行的。在看到转发节点时，遍历（参见Traverser类）会安排移动到新表而不重新访问节点。
+     * 为了确保即使节点被无序移动也不会跳过任何中间节点，第一次遇到转发节点时会创建一个栈（参见TableStack类），如果稍后处理当前表，则用于维持当前位置。
+     * 这些保存/恢复机制的需求相对较少，但是一旦遇到一个转发节点，通常会有更多的转发节点。因此，
+     * Traversers使用了一个简单的缓存方案来避免创建如此多的新的TableStack节点。（感谢Peter Levart建议在这里使用栈。）
+     * 
      * The traversal scheme also applies to partial traversals of
      * ranges of bins (via an alternate Traverser constructor)
      * to support partitioned aggregate operations. Also, read-only
@@ -473,6 +512,26 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * (http://gee.cs.oswego.edu/dl/classes/collections/RBCell.java)
      * based in turn on Cormen, Leiserson, and Rivest "Introduction to
      * Algorithms" (CLR).
+     * 
+     * 遍历方案也适用于桶范围的部分遍历（通过Traverser的替代构造函数），以支持分区聚合操作。此外，只读操作如果被转发到空表，则会放弃，
+     * 这为关闭风格的清除提供了支持，而这种清除方式目前尚未实现。
+     * 
+     * 延迟的表格初始化在首次使用前最小化内存占用，并且还能避免在第一次操作来自putAll、带有映射参数的构造函数或反序列化时进行扩容。
+     * 这些情况试图覆盖初始容量设置，但在竞争条件下未能生效时无害。
+     * 
+     * 元素计数是使用LongAdder的一个特化版本来维护的。我们需要采用特化版本而非直接使用LongAdder，以便访问隐含的争用感应，
+     * 这会导致创建多个CounterCells。计数器机制避免了更新时的竞争，但如果在并发访问时读取过于频繁，则可能会遇到缓存抖动。为了避免如此频繁地读取，
+     * 在有竞争的情况下，仅在向已包含两个或更多节点的桶添加时尝试扩容。在均匀的散列分布下，当达到阈值时，这种情况发生的概率约为13%，
+     * 这意味着大约每8次put操作中只有1次检查阈值（并且在扩容后，许多操作不再进行此类检查）。
+     * 
+     * TreeBins在搜索和相关操作中使用一种特殊的形式进行比较（这是我们不能使用现有集合如TreeMaps的主要原因）。
+     * TreeBins包含Comparable元素，但也可能包含其他元素，以及可能是Comparable但不一定对相同的T类型Comparable的元素，
+     * 所以我们不能在它们之间调用compareTo。为了处理这种情况，树首先按hash值排序，然后如果适用的话，按Comparable.
+     * compareTo顺序排序。在节点查找时，如果元素不可比较或比较结果为0，则在hash值相同时可能需要搜索左右子节点。（
+     * 这对应于如果所有元素都是非Comparable且hash值相同情况下必要的完整列表搜索。）在插入时，为了在重新平衡期间保持总排序（或接近这里所需的要求），
+     * 我们将类和identityHashCodes作为决胜者进行比较。红黑平衡代码是从pre-jdk-collections（http://gee.cs.
+     * oswego.edu/dl/classes/collections/RBCell.java）更新而来，基于Cormen, Leiserson, 和
+     * Rivest的"Introduction to Algorithms"（CLR）。
      *
      * TreeBins also require an additional locking mechanism. While
      * list traversal is always possible by readers even during
@@ -509,94 +568,94 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      * methods (with a few factorings of multiple public methods into
      * internal ones), then sizing methods, trees, traversers, and
      * bulk operations.
+     * 
+     * TreeBins在搜索和相关操作中使用一种特殊的形式进行比较（这是我们不能使用现有集合如TreeMaps的主要原因）。
+     * TreeBins包含Comparable元素，但也可能包含其他元素，以及可能是Comparable但不一定对相同的T类型Comparable的元素，
+     * 所以我们不能在它们之间调用compareTo。为了处理这种情况，树首先按hash值排序，然后如果适用的话，按Comparable.
+     * compareTo顺序排序。在节点查找时，如果元素不可比较或比较结果为0，则在hash值相同时可能需要搜索左右子节点。（
+     * 这对应于如果所有元素都是非Comparable且hash值相同情况下必要的完整列表搜索。）在插入时，为了在重新平衡期间保持总排序（或接近这里所需的要求），
+     * 我们将类和identityHashCodes作为决胜者进行比较。红黑平衡代码是从pre-jdk-collections（http://gee.cs.
+     * oswego.edu/dl/classes/collections/RBCell.java）更新而来，基于Cormen, Leiserson, 和
+     * Rivest的"Introduction to Algorithms"（CLR）。
+     * TreeBins还需要额外的锁定机制。虽然读者在更新期间始终可以通过列表进行遍历，但树遍历却不行，主要是因为树旋转可能会改变根节点及其链接。
+     * TreeBins包含一个基于主要桶同步策略的简单读写锁机制：与插入或移除相关的结构调整已经由桶锁保护（因此不会与其他写入者冲突），
+     * 但必须等待正在进行的读者完成。由于只能有一个这样的等待者，我们使用一个简单的方案，使用一个"waiter"字段来阻止写入者。然而，读者永远不需要阻塞。
+     * 如果根锁被持有，他们将沿着缓慢的遍历路径（通过next指针）前进，直到锁变得可用或列表耗尽，以先发生的情况为准。这些情况并不快，但最大化了总体预期吞吐量。
+     * 为了保持与这个类的先前版本的API和序列化兼容性，引入了几个奇异性。主要是：我们保留但未使用的构造函数参数，这些参数引用concurrencyLevel。
+     * 我们接受一个loadFactor构造函数参数，但只将其应用于初始表容量（这是我们唯一能保证遵守它的时候）。我们还声明了一个未使用的"Segment"类，
+     * 仅在序列化时以最小形式实例化。
+     * 此外，仅仅为了与这个类的先前版本兼容，它扩展了AbstractMap，即使它的所有方法都被覆盖，所以这只是无用的累赘。
+     * 本文件组织得使阅读时更容易理解：首先是主要的静态声明和工具，然后是字段，然后是主要的公共方法（将多个公共方法分解成内部方法），然后是尺寸方法，树，遍历器，
+     * 和批量操作。
+     * 
+     * 
      */
 
     /* ---------------- Constants -------------- */
 
     /**
-     * The largest possible table capacity. This value must be
-     * exactly 1<<30 to stay within Java array allocation and indexing
-     * bounds for power of two table sizes, and is further required
-     * because the top two bits of 32bit hash fields are used for
-     * control purposes.
+     * 可能的最大表格容量。这个值必须恰好是1<<30，以保持在Java数组分配和索引界限内，
+     * 适用于2的幂的表格大小，并且进一步要求是因为32位哈希字段的最高两位用于控制目的。
      */
     private static final int MAXIMUM_CAPACITY = 1 << 30;
 
     /**
-     * The default initial table capacity. Must be a power of 2
-     * (i.e., at least 1) and at most MAXIMUM_CAPACITY.
+     * 默认的初始表格容量。必须是2的幂（即至少为1），并且最多为MAXIMUM_CAPACITY。
      */
     private static final int DEFAULT_CAPACITY = 16;
 
     /**
-     * The largest possible (non-power of two) array size.
-     * Needed by toArray and related methods.
+     * 可能的最大（非2的幂）数组大小。由toArray和相关方法需要。
      */
     static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     /**
-     * The default concurrency level for this table. Unused but
-     * defined for compatibility with previous versions of this class.
+     * 这个表格的默认并发级别。未使用，但定义以与这个类的先前版本兼容。
      */
     private static final int DEFAULT_CONCURRENCY_LEVEL = 16;
 
     /**
-     * The load factor for this table. Overrides of this value in
-     * constructors affect only the initial table capacity. The
-     * actual floating point value isn't normally used -- it is
-     * simpler to use expressions such as {@code n - (n >>> 2)} for
-     * the associated resizing threshold.
+     * 这个表格的负载因子。在构造函数中对此值的覆盖只影响初始表格容量。实际的浮点值通常不使用，
+     * 使用诸如 {@code n - (n >>> 2)} 这样的表达式来表示与之相关的扩容阈值更为简单。
      */
     private static final float LOAD_FACTOR = 0.75f;
 
     /**
-     * The bin count threshold for using a tree rather than list for a
-     * bin. Bins are converted to trees when adding an element to a
-     * bin with at least this many nodes. The value must be greater
-     * than 2, and should be at least 8 to mesh with assumptions in
-     * tree removal about conversion back to plain bins upon
-     * shrinkage.
+     * 使用树而不是列表存储桶的桶计数阈值。当向具有至少这么多节点的桶中添加元素时，桶转换为树。
+     * 该值必须大于2，并且应至少为8，以配合在树删除时关于缩小回普通桶的假设。
      */
     static final int TREEIFY_THRESHOLD = 8;
 
     /**
-     * The bin count threshold for untreeifying a (split) bin during a
-     * resize operation. Should be less than TREEIFY_THRESHOLD, and at
-     * most 6 to mesh with shrinkage detection under removal.
+     * 在调整大小操作期间，将（拆分）桶转换回非树状的桶计数阈值。应该小于TREEIFY_THRESHOLD，
+     * 并且最多为6，以配合在删除时的缩小检测。
      */
     static final int UNTREEIFY_THRESHOLD = 6;
 
     /**
-     * The smallest table capacity for which bins may be treeified.
-     * (Otherwise the table is resized if too many nodes in a bin.)
-     * The value should be at least 4 * TREEIFY_THRESHOLD to avoid
-     * conflicts between resizing and treeification thresholds.
+     * 可能使桶树化的最小表格容量。（否则，如果桶中的节点过多，则会调整表格的大小。）
+     * 该值应至少为4 * TREEIFY_THRESHOLD，以避免在调整大小和树化阈值之间的冲突。
      */
     static final int MIN_TREEIFY_CAPACITY = 64;
 
     /**
-     * Minimum number of rebinnings per transfer step. Ranges are
-     * subdivided to allow multiple resizer threads. This value
-     * serves as a lower bound to avoid resizers encountering
-     * excessive memory contention. The value should be at least
-     * DEFAULT_CAPACITY.
+     * 每个转移步骤中重新划分的最小数量。范围被细分以允许多个调整大小的线程。
+     * 这个值作为下限，以避免调整大小的线程遇到过度的内存竞争。该值应至少为DEFAULT_CAPACITY。
      */
     private static final int MIN_TRANSFER_STRIDE = 16;
 
     /**
-     * The number of bits used for generation stamp in sizeCtl.
-     * Must be at least 6 for 32bit arrays.
+     * 在sizeCtl中用于生成戳记的位数。对于32位数组，必须至少为6位。
      */
     private static final int RESIZE_STAMP_BITS = 16;
 
     /**
-     * The maximum number of threads that can help resize.
-     * Must fit in 32 - RESIZE_STAMP_BITS bits.
+     * 可以帮助调整大小的最大线程数。必须适合在32 - RESIZE_STAMP_BITS位内。
      */
     private static final int MAX_RESIZERS = (1 << (32 - RESIZE_STAMP_BITS)) - 1;
 
     /**
-     * The bit shift for recording size stamp in sizeCtl.
+     * 用于在sizeCtl中记录大小戳记的位移。
      */
     private static final int RESIZE_STAMP_SHIFT = 32 - RESIZE_STAMP_BITS;
 
@@ -707,20 +766,11 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     /* ---------------- Static utilities -------------- */
 
     /**
-     * Spreads (XORs) higher bits of hash to lower and also forces top
-     * bit to 0. Because the table uses power-of-two masking, sets of
-     * hashes that vary only in bits above the current mask will
-     * always collide. (Among known examples are sets of Float keys
-     * holding consecutive whole numbers in small tables.) So we
-     * apply a transform that spreads the impact of higher bits
-     * downward. There is a tradeoff between speed, utility, and
-     * quality of bit-spreading. Because many common sets of hashes
-     * are already reasonably distributed (so don't benefit from
-     * spreading), and because we use trees to handle large sets of
-     * collisions in bins, we just XOR some shifted bits in the
-     * cheapest possible way to reduce systematic lossage, as well as
-     * to incorporate impact of the highest bits that would otherwise
-     * never be used in index calculations because of table bounds.
+     * 将较高位的哈希值扩散（异或）到较低位，并且强制最高位为0。因为表格使用的是2的幂次掩码，
+     * 所以只在当前掩码以上的位上变化的一组哈希值总会发生碰撞。（已知的例子包括在小表格中持有连续整数的Float键集。）
+     * 因此我们应用了一个变换，将高位的影响向下扩散。速度、实用性以及位扩散的质量之间存在权衡。
+     * 因为许多常见的哈希集已经合理地分布（因此不会从扩散中受益），并且因为我们使用树来处理桶中的大量碰撞，
+     * 我们就以最便宜的方式异或一些移位后的位，以减少系统性的损失，同时也包含了那些由于表格边界限制而原本永远不会在索引计算中使用的最高位的影响。
      */
     static final int spread(int h) {
         return (h ^ (h >>> 16)) & HASH_BITS;
@@ -771,19 +821,19 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     /* ---------------- Table element access -------------- */
 
     /*
-     * Atomic access methods are used for table elements as well as
-     * elements of in-progress next table while resizing. All uses of
-     * the tab arguments must be null checked by callers. All callers
-     * also paranoically precheck that tab's length is not zero (or an
-     * equivalent check), thus ensuring that any index argument taking
-     * the form of a hash value anded with (length - 1) is a valid
-     * index. Note that, to be correct wrt arbitrary concurrency
-     * errors by users, these checks must operate on local variables,
-     * which accounts for some odd-looking inline assignments below.
-     * Note that calls to setTabAt always occur within locked regions,
-     * and so require only release ordering.
+     * 原子访问方法用于表元素以及扩容过程中正在进行的下一个表的元素。所有对 tab 参数的使用必须由调用者进行 null 检查。所有调用者还会谨慎地预先检查
+     * tab 的长度是否不为零（或等效检查），从而确保任何形式为哈希值与 (length - 1)
+     * 进行按位与操作得到的索引参数是有效索引。请注意，为了正确处理用户可能引发的任意并发错误，这些检查必须在局部变量上操作，
+     * 这也解释了下面一些看起来奇怪的内联赋值。请注意，对 setTabAt 的调用总是在锁定区域内进行，因此只需要释放排序。
+     * 
+     * getReferenceAcquire 方法是 Unsafe 类中的一个方法，它获取指定内存位置的引用，带有获取语义（acquire
+     * semantics），这意味着在多线程环境中，它会在获取前确保所有之前的写操作都对当前线程可见。
+     * 
+     * i << ASHIFT：将索引 i 左移 ASHIFT 位，相当于乘以 2 的 ASHIFT 次方。ASHIFT
+     * 通常是一个常量，表示数组中一个元素的字节大小的对数（log2）。
+     * ABASE：这是数组的基地址（base offset），表示数组第一个元素的起始位置。
+     * 
      */
-
     @SuppressWarnings("unchecked")
     static final <K, V> Node<K, V> tabAt(Node<K, V>[] tab, int i) {
         return (Node<K, V>) U.getReferenceAcquire(tab, ((long) i << ASHIFT) + ABASE);
@@ -913,34 +963,36 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     }
 
     /**
-     * Creates a new, empty map with an initial table size based on
-     * the given number of elements ({@code initialCapacity}), initial
-     * table density ({@code loadFactor}), and number of concurrently
-     * updating threads ({@code concurrencyLevel}).
+     * 创建一个新的、空的映射，其初始表格大小基于给定的元素数量（{@code initialCapacity}）、
+     * 初始表格密度（{@code loadFactor}）和并发更新线程数量（{@code concurrencyLevel}）。
      *
-     * @param initialCapacity  the initial capacity. The implementation
-     *                         performs internal sizing to accommodate this many
-     *                         elements,
-     *                         given the specified load factor.
-     * @param loadFactor       the load factor (table density) for
-     *                         establishing the initial table size
-     * @param concurrencyLevel the estimated number of concurrently
-     *                         updating threads. The implementation may use this
-     *                         value as
-     *                         a sizing hint.
-     * @throws IllegalArgumentException if the initial capacity is
-     *                                  negative or the load factor or
-     *                                  concurrencyLevel are
-     *                                  nonpositive
+     * @param initialCapacity  映射的初始容量。实现内部调整大小以容纳这么多元素，
+     *                         根据指定的负载因子。
+     * @param loadFactor       确立初始表格大小的负载因子（表格密度）。
+     * @param concurrencyLevel 预估的同时更新线程数量。实现可能将此值用作
+     *                         大小提示。
+     * @throws IllegalArgumentException 如果初始容量为负数，或者负载因子或
+     *                                  并发级别是非正数。
      */
     public ConcurrentHashMap(int initialCapacity,
             float loadFactor, int concurrencyLevel) {
+        // 检查参数有效性
         if (!(loadFactor > 0.0f) || initialCapacity < 0 || concurrencyLevel <= 0)
-            throw new IllegalArgumentException();
-        if (initialCapacity < concurrencyLevel) // Use at least as many bins
-            initialCapacity = concurrencyLevel; // as estimated threads
+            throw new IllegalArgumentException(
+                    "Initial capacity, load factor, and concurrency level must be positive.");
+
+        // 如果初始容量小于并发级别，使用至少与预估线程数相同数量的桶
+        if (initialCapacity < concurrencyLevel)
+            initialCapacity = concurrencyLevel;
+
+        // 计算期望的大小，即元素数量除以负载因子，向上取整
         long size = (long) (1.0 + (long) initialCapacity / loadFactor);
+
+        // 确定实际的容量，如果计算的大小大于最大容量，则使用最大容量；
+        // 否则，使用tableSizeFor方法确定合适的容量
         int cap = (size >= (long) MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : tableSizeFor((int) size);
+
+        // 设置sizeCtl，这是控制表格大小和扩容操作的变量
         this.sizeCtl = cap;
     }
 
@@ -1058,17 +1110,19 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
             throw new NullPointerException();
 
         // 计算键的哈希值并进行散列扩展
+        // spread 相当于是一个扰动函数
+        // 对于某些对象而言,hashcode可能在低位变动但是高位的变动不是很大,进而导致出现碰撞的概率变大.
         int hash = spread(key.hashCode());
         int binCount = 0; // 记录桶中的节点数量
 
-        // 开始尝试插入操作
+        // 开始尝试插入操作, CAS自旋
         for (Node<K, V>[] tab = table;;) {
             Node<K, V> f;
             int n, i, fh;
             K fk;
             V fv;
 
-            // 如果哈希表为空或长度为0，则初始化表格
+            // 如果哈希表为空或长度为0，则初始化表格, tab的长度恒为2的幂次方
             if (tab == null || (n = tab.length) == 0)
                 tab = initTable();
             else {
@@ -1080,7 +1134,7 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                     if (casTabAt(tab, i, null, new Node<K, V>(hash, key, value)))
                         break; // 插入成功，退出循环
                 } else if ((fh = f.hash) == MOVED) {
-                    // 如果桶的头节点标记为 MOVED，说明需要进行表格迁移
+                    // 如果桶的头节点标记为 MOVED，说明需要进行table迁移
                     tab = helpTransfer(tab, f);
                 } else if (onlyIfAbsent // 检查第一个节点是否已存在
                         && fh == hash
@@ -2385,48 +2439,62 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     }
 
     /**
-     * Adds to count, and if table is too small and not already
-     * resizing, initiates transfer. If already resizing, helps
-     * perform transfer if work is available. Rechecks occupancy
-     * after a transfer to see if another resize is already needed
-     * because resizings are lagging additions.
-     *
-     * @param x     the count to add
-     * @param check if <0, don't check resize, if <= 1 only check if uncontended
+     * 增加计数，并且如果表格太小且尚未开始调整大小，则启动转移。如果已经在调整大小，如果有工作可做，则帮助执行转移。
+     * 转移后重新检查占用情况，以查看是否已经需要另一次调整大小，因为调整大小的操作可能会滞后于添加操作。
+     * check的作用是控制是否需要进行容量检查以及可能的扩容操作.
+     * 
+     * @param x     要添加的计数
+     * @param check 如果小于0，不检查调整大小；如果小于等于1，仅在无竞争的情况下检查调整大小
      */
     private final void addCount(long x, int check) {
+        // 获取当前计数器单元数组（CounterCell）。如果它不为空，尝试直接在单元中更新计数。
         CounterCell[] cs;
         long b, s;
+        // 如果 counterCells 不为 null，或者 BASECOUNT 的值在执行比较和设置时失败
         if ((cs = counterCells) != null ||
                 !U.compareAndSetLong(this, BASECOUNT, b = baseCount, s = b + x)) {
             CounterCell c;
             long v;
             int m;
             boolean uncontended = true;
+            // 如果计数器单元数组为空、数组长度无效、或在当前线程的计数单元中失败
             if (cs == null || (m = cs.length - 1) < 0 ||
+            // TODO 线程本地随机探测 / 原子比较并设置值
                     (c = cs[ThreadLocalRandom.getProbe() & m]) == null ||
                     !(uncontended = U.compareAndSetLong(c, CELLVALUE, v = c.value, v + x))) {
+                // 如果直接更新失败，调用 fullAddCount 进行更复杂的更新
                 fullAddCount(x, uncontended);
                 return;
             }
+            // 如果 check 参数小于等于 1，则返回，不再执行大小检查
             if (check <= 1)
                 return;
+            // 计算总的元素数量（调用 sumCount()）
             s = sumCount();
         }
+        // 如果 check 参数大于等于 0，进行容量检查和扩容
         if (check >= 0) {
             Node<K, V>[] tab, nt;
             int n, sc;
+            // 检查是否需要扩容：当前大小是否超过控制值，当前表是否存在，以及当前容量是否小于最大容量
             while (s >= (long) (sc = sizeCtl) && (tab = table) != null &&
                     (n = tab.length) < MAXIMUM_CAPACITY) {
+                // 计算扩容标记，用于跟踪扩容过程中的状态
                 int rs = resizeStamp(n) << RESIZE_STAMP_SHIFT;
+                // 如果当前控制值小于 0，表示正在扩容
                 if (sc < 0) {
+                    // 判断是否可以继续扩容：是否已经有足够的扩容者，是否需要转移，或转移是否结束
                     if (sc == rs + MAX_RESIZERS || sc == rs + 1 ||
                             (nt = nextTable) == null || transferIndex <= 0)
                         break;
+                    // 尝试更新控制值，表示增加扩容者并开始转移
                     if (U.compareAndSetInt(this, SIZECTL, sc, sc + 1))
                         transfer(tab, nt);
                 } else if (U.compareAndSetInt(this, SIZECTL, sc, rs + 2))
+                    // 尝试更新控制值，表示开始扩容并转移数据
                     transfer(tab, null);
+
+                // 重新计算总的元素数量（调用 sumCount()）
                 s = sumCount();
             }
         }
@@ -2438,21 +2506,36 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     final Node<K, V>[] helpTransfer(Node<K, V>[] tab, Node<K, V> f) {
         Node<K, V>[] nextTab;
         int sc;
+
+        // 确保传入的 tab 不为空，且 f 是 ForwardingNode 类型
+        // ForwardingNode 是用于在扩容期间标记旧表的节点
         if (tab != null && (f instanceof ForwardingNode) &&
                 (nextTab = ((ForwardingNode<K, V>) f).nextTable) != null) {
+
+            // 计算扩容标记，resizeStamp 是用于标记扩容阶段的常量
             int rs = resizeStamp(tab.length) << RESIZE_STAMP_SHIFT;
+
+            // 在扩容期间，尝试帮助转移元素
             while (nextTab == nextTable && table == tab &&
                     (sc = sizeCtl) < 0) {
+
+                // 如果当前 sizeCtl 的值表明扩容已经完成，或者当前扩容者已达到最大值，或 transferIndex <= 0，退出循环
                 if (sc == rs + MAX_RESIZERS || sc == rs + 1 ||
                         transferIndex <= 0)
                     break;
+
+                // 尝试更新 sizeCtl 以增加扩容者数量，并发地帮助转移元素
                 if (U.compareAndSetInt(this, SIZECTL, sc, sc + 1)) {
+                    // 调用 transfer 方法实际进行元素转移
                     transfer(tab, nextTab);
                     break;
                 }
             }
+            // 返回新的表
             return nextTab;
         }
+
+        // 如果条件不满足，返回当前表
         return table;
     }
 
@@ -2675,6 +2758,9 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     /**
      * A padded cell for distributing counts. Adapted from LongAdder
      * and Striped64. See their internal docs for explanation.
+     * 在 ConcurrentHashMap 中，元素计数（例如，size 方法中的元素数量）需要在并发环境中保持高效和一致性。传统的计数操作（例如使用单一的
+     * long 类型字段）可能会导致线程争用和性能瓶颈。为了优化这些操作，特别是在高并发场景下，CounterCell 数组被引入。
+     * 
      */
     @jdk.internal.vm.annotation.Contended
     static final class CounterCell {
@@ -6651,26 +6737,56 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     }
 
     // Unsafe mechanics
+    // 获取 Unsafe 实例，Unsafe 提供了对底层内存和并发操作的访问
     private static final Unsafe U = Unsafe.getUnsafe();
+
+    // 获取 ConcurrentHashMap 中字段 "sizeCtl" 的内存偏移量
+    // 用于在并发环境下原子地访问和修改这个字段
     private static final long SIZECTL = U.objectFieldOffset(ConcurrentHashMap.class, "sizeCtl");
+
+    // 获取 ConcurrentHashMap 中字段 "transferIndex" 的内存偏移量
+    // 用于在扩容操作中跟踪需要迁移的索引
     private static final long TRANSFERINDEX = U.objectFieldOffset(ConcurrentHashMap.class, "transferIndex");
+
+    // 获取 ConcurrentHashMap 中字段 "baseCount" 的内存偏移量
+    // 用于在并发环境下原子地访问和修改 baseCount，通常用于计算元素数量
     private static final long BASECOUNT = U.objectFieldOffset(ConcurrentHashMap.class, "baseCount");
+
+    // 获取 ConcurrentHashMap 中字段 "cellsBusy" 的内存偏移量
+    // 用于原子地访问和修改 cellsBusy，通常用于多线程并发计数器
     private static final long CELLSBUSY = U.objectFieldOffset(ConcurrentHashMap.class, "cellsBusy");
+
+    // 获取 CounterCell 中字段 "value" 的内存偏移量
+    // 用于原子地访问和修改 CounterCell 的 value 字段，这通常是计数器的实际值
     private static final long CELLVALUE = U.objectFieldOffset(CounterCell.class, "value");
+
+    // 获取 Node 数组的基地址偏移量
+    // 这是数组的起始位置，用于计算元素的实际内存位置
     private static final int ABASE = U.arrayBaseOffset(Node[].class);
+
+    // 计算数组元素的字节偏移量的位移量
+    // 这用于计算数组中指定索引的实际内存位置
     private static final int ASHIFT;
 
     static {
+        // 获取 Node 数组中单个元素的字节规模
         int scale = U.arrayIndexScale(Node[].class);
+
+        // 检查字节规模是否是 2 的幂次方
+        // 这是对内存偏移量计算的正确性进行验证
         if ((scale & (scale - 1)) != 0)
             throw new ExceptionInInitializerError("array index scale not a power of two");
+
+        // 计算数组元素的位移量，这样可以在原子操作中快速计算数组索引
         ASHIFT = 31 - Integer.numberOfLeadingZeros(scale);
 
-        // Reduce the risk of rare disastrous classloading in first call to
-        // LockSupport.park: https://bugs.openjdk.org/browse/JDK-8074773
+        // 强制加载 LockSupport 类，避免在首次调用 LockSupport.park 时出现类加载的稀有问题
+        // 参考: https://bugs.openjdk.org/browse/JDK-8074773
         Class<?> ensureLoaded = LockSupport.class;
 
-        // Eager class load observed to help JIT during startup
+        // 观察到提前加载类有助于 JIT 编译器在启动期间进行优化
+        // 强制加载 ReservationNode 类以提高 JIT 性能
         ensureLoaded = ReservationNode.class;
     }
+
 }
