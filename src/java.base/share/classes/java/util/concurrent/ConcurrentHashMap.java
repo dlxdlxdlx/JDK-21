@@ -1118,11 +1118,13 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
         // 开始尝试插入操作, CAS自旋
         for (Node<K, V>[] tab = table;;) {
             Node<K, V> f;
+            // fh用于确定如何处理键值对的插入或者更新
             int n, i, fh;
             K fk;
             V fv;
 
             // 如果哈希表为空或长度为0，则初始化表格, tab的长度恒为2的幂次方
+            // 懒初始化策略
             if (tab == null || (n = tab.length) == 0)
                 tab = initTable();
             else {
@@ -1130,11 +1132,12 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                 i = (n - 1) & hash;
                 // 获取桶的头节点
                 if ((f = tabAt(tab, i)) == null) {
-                    // 如果桶为空，尝试将新节点原子性地插入到桶中
+                    // 如果桶为空，尝试将新节点原子性地插入到桶中, 通过CAS防止竞争
                     if (casTabAt(tab, i, null, new Node<K, V>(hash, key, value)))
                         break; // 插入成功，退出循环
                 } else if ((fh = f.hash) == MOVED) {
-                    // 如果桶的头节点标记为 MOVED，说明需要进行table迁移
+                    // 如果桶的头节点标记为 MOVED，表示当前的桶正在进行扩容
+                    // 同时当前线程参与扩容流程.
                     tab = helpTransfer(tab, f);
                 } else if (onlyIfAbsent // 检查第一个节点是否已存在
                         && fh == hash
@@ -1189,6 +1192,8 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
             }
         }
         // 更新哈希表的大小计数
+        // 如果不是更新而是插入,则通过addCount记录新增之后哈希表的元素个数
+        // 第一个参数表示增加的元素个数,第二个参数用于判断是否需要检查扩容
         addCount(1L, binCount);
         return null; // 如果没有返回旧值，则返回 null
     }
@@ -2351,6 +2356,8 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
 
     /**
      * A node inserted at head of bins during transfer operations.
+     * ForwardingNode 是 ConcurrentHashMap
+     * 在使用链表时，特别是链表转化为树结构时的一个中间节点。它是为了在转换过程中保持数据结构的完整性而存在的。
      */
     static final class ForwardingNode<K, V> extends Node<K, V> {
         final Node<K, V>[] nextTable;
@@ -2451,7 +2458,9 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
         CounterCell[] cs;
         long b, s;
         // 如果 counterCells 不为 null，或者 BASECOUNT 的值在执行比较和设置时失败
-        if ((cs = counterCells) != null ||
+        if ((cs = counterCells) != null // 已经初始化过了
+                || // 或者通过CAS设置计数基数失败(其他线程也在尝试更新计数器)
+                   // 当向Hash表插入第一个键值对的时候, baseCount是0, 此处用于更新baseCount = x
                 !U.compareAndSetLong(this, BASECOUNT, b = baseCount, s = b + x)) {
             CounterCell c;
             long v;
@@ -2463,6 +2472,8 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                     (c = cs[ThreadLocalRandom.getProbe() & m]) == null ||
                     !(uncontended = U.compareAndSetLong(c, CELLVALUE, v = c.value, v + x))) {
                 // 如果直接更新失败，调用 fullAddCount 进行更复杂的更新
+                // 如果uncontented为false, 表示存在线程竞争, 需要重新获取当前线程的hash值,重新分配hash桶
+
                 fullAddCount(x, uncontended);
                 return;
             }
@@ -2785,25 +2796,35 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
     // See LongAdder version for explanation
     private final void fullAddCount(long x, boolean wasUncontended) {
         int h;
+        // 如果线程的探针值为0，初始化探针值和线程局部变量
         if ((h = ThreadLocalRandom.getProbe()) == 0) {
-            ThreadLocalRandom.localInit(); // force initialization
+            ThreadLocalRandom.localInit(); // 强制初始化线程局部变量
             h = ThreadLocalRandom.getProbe();
-            wasUncontended = true;
+            wasUncontended = true; // 假设没有争用
         }
-        boolean collide = false; // True if last slot nonempty
+
+        boolean collide = false; // 标记最后一个槽位是否非空
+
+        // 循环直到成功更新计数器
         for (;;) {
             CounterCell[] cs;
             CounterCell c;
             int n;
             long v;
+
+            // 检查`counterCells`数组是否存在且非空
             if ((cs = counterCells) != null && (n = cs.length) > 0) {
+
+                // 如果当前线程对应的`CounterCell`为空，尝试创建新的`CounterCell`
                 if ((c = cs[(n - 1) & h]) == null) {
-                    if (cellsBusy == 0) { // Try to attach new Cell
-                        CounterCell r = new CounterCell(x); // Optimistic create
+                    if (cellsBusy == 0) { // 如果没有其他线程正在初始化`CounterCell`
+                        CounterCell r = new CounterCell(x); // 乐观地创建新的`CounterCell`
+
+                        // 尝试获取`cellsBusy`锁，用于初始化`CounterCell`
                         if (cellsBusy == 0 &&
                                 U.compareAndSetInt(this, CELLSBUSY, 0, 1)) {
                             boolean created = false;
-                            try { // Recheck under lock
+                            try { // 在锁保护下再次检查并初始化`CounterCell`
                                 CounterCell[] rs;
                                 int m, j;
                                 if ((rs = counterCells) != null &&
@@ -2813,51 +2834,61 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                                     created = true;
                                 }
                             } finally {
-                                cellsBusy = 0;
+                                cellsBusy = 0; // 释放锁
                             }
                             if (created)
-                                break;
-                            continue; // Slot is now non-empty
+                                break; // 成功初始化，退出循环
+                            continue; // 初始失败，继续循环
                         }
                     }
-                    collide = false;
-                } else if (!wasUncontended) // CAS already known to fail
-                    wasUncontended = true; // Continue after rehash
-                else if (U.compareAndSetLong(c, CELLVALUE, v = c.value, v + x))
-                    break;
+                    collide = false; // 没有争用
+                } else if (!wasUncontended) // 如果之前知道CAS操作会失败
+                    wasUncontended = true; // 准备重试
+                else if (U.compareAndSetLong(c, CELLVALUE, v = c.value, v + x)) // 尝试更新`CounterCell`的值
+                    break; // 更新成功，退出循环
+
+                // 处理`counterCells`数组过期或达到最大尺寸的情况
                 else if (counterCells != cs || n >= NCPU)
-                    collide = false; // At max size or stale
+                    collide = false; // 重置争用状态
                 else if (!collide)
-                    collide = true;
+                    collide = true; // 标记争用
                 else if (cellsBusy == 0 &&
                         U.compareAndSetInt(this, CELLSBUSY, 0, 1)) {
                     try {
-                        if (counterCells == cs) // Expand table unless stale
+                        if (counterCells == cs) // 如果`counterCells`未被其他线程修改，尝试扩展数组
                             counterCells = Arrays.copyOf(cs, n << 1);
                     } finally {
-                        cellsBusy = 0;
+                        cellsBusy = 0; // 释放锁
                     }
-                    collide = false;
-                    continue; // Retry with expanded table
+                    collide = false; // 重置争用状态
+                    continue; // 继续循环，使用扩展后的数组
                 }
+
+                // 更新探针值，准备下一次尝试
                 h = ThreadLocalRandom.advanceProbe(h);
-            } else if (cellsBusy == 0 && counterCells == cs &&
+            }
+
+            // 如果`counterCells`数组未初始化或正在初始化，尝试初始化数组
+            else if (cellsBusy == 0 && counterCells == cs &&
                     U.compareAndSetInt(this, CELLSBUSY, 0, 1)) {
                 boolean init = false;
-                try { // Initialize table
+                try {
                     if (counterCells == cs) {
-                        CounterCell[] rs = new CounterCell[2];
-                        rs[h & 1] = new CounterCell(x);
+                        CounterCell[] rs = new CounterCell[2]; // 初始化数组
+                        rs[h & 1] = new CounterCell(x); // 在数组中放入新的`CounterCell`
                         counterCells = rs;
                         init = true;
                     }
                 } finally {
-                    cellsBusy = 0;
+                    cellsBusy = 0; // 释放锁
                 }
                 if (init)
-                    break;
-            } else if (U.compareAndSetLong(this, BASECOUNT, v = baseCount, v + x))
-                break; // Fall back on using base
+                    break; // 成功初始化，退出循环
+            }
+
+            // 最后，尝试直接更新`baseCount`，作为回退方案
+            else if (U.compareAndSetLong(this, BASECOUNT, v = baseCount, v + x))
+                break; // 更新成功，退出循环
         }
     }
 
