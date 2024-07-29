@@ -37,6 +37,7 @@ package java.util.concurrent.locks;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject;
 
 /**
  * A reentrant mutual exclusion {@link Lock} with the same basic
@@ -107,6 +108,66 @@ import java.util.concurrent.TimeUnit;
  * This lock supports a maximum of 2147483647 recursive locks by
  * the same thread. Attempts to exceed this limit result in
  * {@link Error} throws from locking methods.
+ *
+ * @since 1.5
+ * @author Doug Lea
+ */
+/**
+ * 一种可重入的互斥{@link Lock}，其基本行为和语义与使用
+ * {@code synchronized}方法和语句访问的隐式监视器锁相同，
+ * 但是具有扩展的能力。
+ *
+ * <p>
+ * 一个{@code ReentrantLock}由最后成功锁定但尚未解锁它的线程
+ * <em>拥有</em>。当锁不由另一个线程拥有时，线程调用
+ * {@code lock}将会返回，成功获取锁。如果当前线程已经
+ * 拥有锁，则该方法将立即返回。这可以通过使用方法
+ * {@link #isHeldByCurrentThread}和{@link #getHoldCount}进行检查。
+ *
+ * <p>
+ * 本类的构造函数接受一个可选的<em>公平性</em>参数。当设置为
+ * {@code true}时，在争用下，锁倾向于授予等待时间最长的
+ * 线程访问权限。否则，此锁不保证任何特定的访问顺序。使用
+ * 多线程访问的公平锁的程序可能表现出较低的整体吞吐量（即，
+ * 较慢；通常慢得多），但获得锁的时间差异较小，且能保证不会
+ * 发生饥饿。然而需要注意的是，锁的公平性并不能保证线程调度的
+ * 公平性。因此，许多线程中的一条可能连续多次获得公平锁，
+ * 而其他活跃线程没有进展且当前没有持有锁。
+ * 此外，请注意，无时限的{@link #tryLock()}方法并不遵循公平性设置。
+ * 如果锁可用，即使其他线程正在等待，它也会成功。
+ *
+ * <p>
+ * 推荐的做法是<em>总是</em>立即在调用{@code lock}后跟上一个
+ * {@code try}块，最典型的是在如下before/after结构中：
+ *
+ * <pre> {@code
+ * class X {
+ *     private final ReentrantLock lock = new ReentrantLock();
+ *     // ...
+ *
+ *     public void m() {
+ *         lock.lock(); // 阻塞直到满足条件
+ *         try {
+ *             // ... 方法体
+ *         } finally {
+ *             lock.unlock();
+ *         }
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>
+ * 除了实现{@link Lock}接口之外，此类还定义了许多
+ * {@code public}和{@code protected}方法来检查锁的状态。
+ * 其中一些方法仅对工具监控和性能分析有用。
+ *
+ * <p>
+ * 本类的序列化行为与内置锁相同：反序列化的锁处于未锁定状态，
+ * 不管其序列化时的状态如何。
+ *
+ * <p>
+ * 此锁支持同一线程最多2147483647次的递归锁定。试图超过此限制将
+ * 导致锁定方法抛出{@link Error}。
  *
  * @since 1.5
  * @author Doug Lea
@@ -349,6 +410,19 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * purposes and lies dormant until the lock has been acquired,
      * at which time the lock hold count is set to one.
      */
+    /**
+     * 获取锁。
+     *
+     * <p>
+     * 如果锁未被其他线程持有，则立即获取锁并返回，将锁的持有计数设置为一。
+     *
+     * <p>
+     * 如果当前线程已经持有了锁，则锁的持有计数增加一，并且方法立即返回。
+     *
+     * <p>
+     * 如果锁被另一个线程持有，则当前线程在调度目的上被禁用，并处于休眠状态，
+     * 直到锁被获取为止，在那时锁的持有计数被设置为一。
+     */
     public void lock() {
         sync.lock();
     }
@@ -404,6 +478,48 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * interrupt over normal or reentrant acquisition of the lock.
      *
      * @throws InterruptedException if the current thread is interrupted
+     */
+    /**
+     * 除非当前线程被{@linkplain Thread#interrupt 中断}，否则获取锁。
+     *
+     * <p>
+     * 如果锁未被其他线程持有，则立即获取锁并返回，将锁的持有计数设置为一。
+     *
+     * <p>
+     * 如果当前线程已经持有了这个锁，则锁的持有计数增加一，并且方法立即返回。
+     *
+     * <p>
+     * 如果锁被另一个线程持有，则当前线程对于线程调度目的被禁用，并处于休眠状态，
+     * 直到以下两种情况之一发生：
+     *
+     * <ul>
+     *
+     * <li>锁被当前线程获取；或
+     *
+     * <li>其他某个线程{@linkplain Thread#interrupt 中断}当前线程。
+     *
+     * </ul>
+     *
+     * <p>
+     * 如果锁被当前线程获取，则锁的持有计数设置为一。
+     *
+     * <p>
+     * 如果当前线程：
+     *
+     * <ul>
+     *
+     * <li>在进入此方法时设置了中断状态；或
+     *
+     * <li>在获取锁时被{@linkplain Thread#interrupt 中断}，
+     *
+     * </ul>
+     *
+     * 则抛出{@link InterruptedException}，并且清除当前线程的中断状态。
+     *
+     * <p>
+     * 在此实现中，由于此方法是一个显式的中断点，因此优先响应中断而非正常的或重入的锁获取。
+     *
+     * @throws InterruptedException 如果当前线程被中断
      */
     public void lockInterruptibly() throws InterruptedException {
         sync.lockInterruptibly();

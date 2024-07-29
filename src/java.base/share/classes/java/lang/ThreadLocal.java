@@ -32,21 +32,21 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.internal.misc.CarrierThreadLocal;
-import jdk.internal.misc.TerminatingThreadLocal;
-import sun.security.action.GetPropertyAction;
 
 /**
- * This class provides thread-local variables.  These variables differ from
+ * This class provides thread-local variables. These variables differ from
  * their normal counterparts in that each thread that accesses one (via its
  * {@code get} or {@code set} method) has its own, independently initialized
- * copy of the variable.  {@code ThreadLocal} instances are typically private
+ * copy of the variable. {@code ThreadLocal} instances are typically private
  * static fields in classes that wish to associate state with a thread (e.g.,
  * a user ID or Transaction ID).
  *
- * <p>For example, the class below generates unique identifiers local to each
+ * <p>
+ * For example, the class below generates unique identifiers local to each
  * thread.
  * A thread's id is assigned the first time it invokes {@code ThreadId.get()}
  * and remains unchanged on subsequent calls.
+ * 
  * <pre>
  * import java.util.concurrent.atomic.AtomicInteger;
  *
@@ -55,10 +55,10 @@ import sun.security.action.GetPropertyAction;
  *     private static final AtomicInteger nextId = new AtomicInteger(0);
  *
  *     // Thread local variable containing each thread's ID
- *     private static final ThreadLocal&lt;Integer&gt; threadId =
- *         new ThreadLocal&lt;Integer&gt;() {
- *             &#64;Override protected Integer initialValue() {
- *                 return nextId.getAndIncrement();
+ *     private static final ThreadLocal&lt;Integer&gt; threadId = new ThreadLocal&lt;Integer&gt;() {
+ *         &#64;Override
+ *         protected Integer initialValue() {
+ *             return nextId.getAndIncrement();
  *         }
  *     };
  *
@@ -68,15 +68,17 @@ import sun.security.action.GetPropertyAction;
  *     }
  * }
  * </pre>
- * <p>Each thread holds an implicit reference to its copy of a thread-local
+ * <p>
+ * Each thread holds an implicit reference to its copy of a thread-local
  * variable as long as the thread is alive and the {@code ThreadLocal}
  * instance is accessible; after a thread goes away, all of its copies of
  * thread-local instances are subject to garbage collection (unless other
  * references to these copies exist).
+ * 
  * @param <T> the type of the thread local's value
  *
- * @author  Josh Bloch and Doug Lea
- * @since   1.2
+ * @author Josh Bloch and Doug Lea
+ * @since 1.2
  */
 public class ThreadLocal<T> {
     private static final boolean TRACE_VTHREAD_LOCALS = traceVirtualThreadLocals();
@@ -84,8 +86,8 @@ public class ThreadLocal<T> {
     /**
      * ThreadLocals rely on per-thread linear-probe hash maps attached
      * to each thread (Thread.threadLocals and
-     * inheritableThreadLocals).  The ThreadLocal objects act as keys,
-     * searched via threadLocalHashCode.  This is a custom hash code
+     * inheritableThreadLocals). The ThreadLocal objects act as keys,
+     * searched via threadLocalHashCode. This is a custom hash code
      * (useful only within ThreadLocalMaps) that eliminates collisions
      * in the common case where consecutively constructed ThreadLocals
      * are used by the same threads, while remaining well-behaved in
@@ -97,8 +99,7 @@ public class ThreadLocal<T> {
      * The next hash code to be given out. Updated atomically. Starts at
      * zero.
      */
-    private static AtomicInteger nextHashCode =
-        new AtomicInteger();
+    private static AtomicInteger nextHashCode = new AtomicInteger();
 
     /**
      * The difference between successively generated hash codes - turns
@@ -116,21 +117,21 @@ public class ThreadLocal<T> {
 
     /**
      * Returns the current thread's "initial value" for this
-     * thread-local variable.  This method will be invoked the first
+     * thread-local variable. This method will be invoked the first
      * time a thread accesses the variable with the {@link #get}
      * method, unless the thread previously invoked the {@link #set}
      * method, in which case the {@code initialValue} method will not
-     * be invoked for the thread.  Normally, this method is invoked at
+     * be invoked for the thread. Normally, this method is invoked at
      * most once per thread, but it may be invoked again in case of
      * subsequent invocations of {@link #remove} followed by {@link #get}.
      *
      * @implSpec
-     * This implementation simply returns {@code null}; if the
-     * programmer desires thread-local variables to have an initial
-     * value other than {@code null}, then either {@code ThreadLocal}
-     * can be subclassed and this method overridden or the method
-     * {@link ThreadLocal#withInitial(Supplier)} can be used to
-     * construct a {@code ThreadLocal}.
+     *           This implementation simply returns {@code null}; if the
+     *           programmer desires thread-local variables to have an initial
+     *           value other than {@code null}, then either {@code ThreadLocal}
+     *           can be subclassed and this method overridden or the method
+     *           {@link ThreadLocal#withInitial(Supplier)} can be used to
+     *           construct a {@code ThreadLocal}.
      *
      * @return the initial value for this thread-local
      * @see #withInitial(java.util.function.Supplier)
@@ -143,7 +144,7 @@ public class ThreadLocal<T> {
      * Creates a thread local variable. The initial value of the variable is
      * determined by invoking the {@code get} method on the {@code Supplier}.
      *
-     * @param <S> the type of the thread local's value
+     * @param <S>      the type of the thread local's value
      * @param supplier the supplier to be used to determine the initial value
      * @return a new thread local variable
      * @throws NullPointerException if the specified supplier is null
@@ -155,6 +156,7 @@ public class ThreadLocal<T> {
 
     /**
      * Creates a thread local variable.
+     * 
      * @see #withInitial(java.util.function.Supplier)
      */
     public ThreadLocal() {
@@ -162,7 +164,7 @@ public class ThreadLocal<T> {
 
     /**
      * Returns the value in the current thread's copy of this
-     * thread-local variable.  If the variable has no value for the
+     * thread-local variable. If the variable has no value for the
      * current thread, it is first initialized to the value returned
      * by an invocation of the {@link #initialValue} method.
      *
@@ -195,7 +197,8 @@ public class ThreadLocal<T> {
     }
 
     /**
-     * Returns {@code true} if there is a value in the current carrier thread's copy of
+     * Returns {@code true} if there is a value in the current carrier thread's copy
+     * of
      * this thread-local variable, even if that values is {@code null}.
      *
      * @return {@code true} if current carrier thread has associated value in this
@@ -240,12 +243,12 @@ public class ThreadLocal<T> {
 
     /**
      * Sets the current thread's copy of this thread-local variable
-     * to the specified value.  Most subclasses will have no need to
+     * to the specified value. Most subclasses will have no need to
      * override this method, relying solely on the {@link #initialValue}
      * method to set the values of thread-locals.
      *
      * @param value the value to be stored in the current thread's copy of
-     *        this thread-local.
+     *              this thread-local.
      */
     public void set(T value) {
         set(Thread.currentThread(), value);
@@ -270,36 +273,36 @@ public class ThreadLocal<T> {
 
     /**
      * Removes the current thread's value for this thread-local
-     * variable.  If this thread-local variable is subsequently
+     * variable. If this thread-local variable is subsequently
      * {@linkplain #get read} by the current thread, its value will be
      * reinitialized by invoking its {@link #initialValue} method,
      * unless its value is {@linkplain #set set} by the current thread
-     * in the interim.  This may result in multiple invocations of the
+     * in the interim. This may result in multiple invocations of the
      * {@code initialValue} method in the current thread.
      *
      * @since 1.5
      */
-     public void remove() {
-         remove(Thread.currentThread());
-     }
+    public void remove() {
+        remove(Thread.currentThread());
+    }
 
-     void removeCarrierThreadLocal() {
-         assert this instanceof CarrierThreadLocal<T>;
-         remove(Thread.currentCarrierThread());
-     }
+    void removeCarrierThreadLocal() {
+        assert this instanceof CarrierThreadLocal<T>;
+        remove(Thread.currentCarrierThread());
+    }
 
-     private void remove(Thread t) {
-         ThreadLocalMap m = getMap(t);
-         if (m != null) {
-             m.remove(this);
-         }
-     }
+    private void remove(Thread t) {
+        ThreadLocalMap m = getMap(t);
+        if (m != null) {
+            m.remove(this);
+        }
+    }
 
     /**
      * Get the map associated with a ThreadLocal. Overridden in
      * InheritableThreadLocal.
      *
-     * @param  t the current thread
+     * @param t the current thread
      * @return the map
      */
     ThreadLocalMap getMap(Thread t) {
@@ -310,7 +313,7 @@ public class ThreadLocal<T> {
      * Create the map associated with a ThreadLocal. Overridden in
      * InheritableThreadLocal.
      *
-     * @param t the current thread
+     * @param t          the current thread
      * @param firstValue value for the initial entry of the map
      */
     void createMap(Thread t, T firstValue) {
@@ -321,7 +324,7 @@ public class ThreadLocal<T> {
      * Factory method to create map of inherited thread locals.
      * Designed to be called only from Thread constructor.
      *
-     * @param  parentMap the map associated with parent thread
+     * @param parentMap the map associated with parent thread
      * @return a map containing the parent's inheritable bindings
      */
     static ThreadLocalMap createInheritedMap(ThreadLocalMap parentMap) {
@@ -359,10 +362,15 @@ public class ThreadLocal<T> {
     }
 
     /**
+     * ThreadLocalMap 是一个定制化的散列表，仅适用于维护线程局部变量。
+     * 没有任何操作暴露在 ThreadLocal 类之外。该类是包私有的，以便在 Thread 类中声明字段。
+     * 为了帮助处理非常大和长期使用的场景，散列表条目使用 WeakReference 作为键。
+     * 然而，由于没有使用引用队列，过期的条目只有在表格开始出现空间不足时才确保被移除。
+     * 
      * ThreadLocalMap is a customized hash map suitable only for
      * maintaining thread local values. No operations are exported
      * outside of the ThreadLocal class. The class is package private to
-     * allow declaration of fields in class Thread.  To help deal with
+     * allow declaration of fields in class Thread. To help deal with
      * very large and long-lived usages, the hash table entries use
      * WeakReferences for keys. However, since reference queues are not
      * used, stale entries are guaranteed to be removed only when
@@ -373,9 +381,9 @@ public class ThreadLocal<T> {
         /**
          * The entries in this hash map extend WeakReference, using
          * its main ref field as the key (which is always a
-         * ThreadLocal object).  Note that null keys (i.e. entry.get()
+         * ThreadLocal object). Note that null keys (i.e. entry.get()
          * == null) mean that the key is no longer referenced, so the
-         * entry can be expunged from table.  Such entries are referred to
+         * entry can be expunged from table. Such entries are referred to
          * as "stale entries" in the code that follows.
          */
         static class Entry extends WeakReference<ThreadLocal<?>> {
@@ -486,13 +494,13 @@ public class ThreadLocal<T> {
         }
 
         /**
-         * Get the entry associated with key.  This method
+         * Get the entry associated with key. This method
          * itself handles only the fast path: a direct hit of existing
-         * key. It otherwise relays to getEntryAfterMiss.  This is
+         * key. It otherwise relays to getEntryAfterMiss. This is
          * designed to maximize performance for direct hits, in part
          * by making this method readily inlinable.
          *
-         * @param  key the thread local object
+         * @param key the thread local object
          * @return the entry associated with key, or null if no such
          */
         private Entry getEntry(ThreadLocal<?> key) {
@@ -508,9 +516,9 @@ public class ThreadLocal<T> {
          * Version of getEntry method for use when key is not found in
          * its direct hash slot.
          *
-         * @param  key the thread local object
-         * @param  i the table index for key's hash code
-         * @param  e the entry at table[i]
+         * @param key the thread local object
+         * @param i   the table index for key's hash code
+         * @param e   the entry at table[i]
          * @return the entry associated with key, or null if no such
          */
         private Entry getEntryAfterMiss(ThreadLocal<?> key, int i, Entry e) {
@@ -532,7 +540,7 @@ public class ThreadLocal<T> {
         /**
          * Set the value associated with key.
          *
-         * @param key the thread local object
+         * @param key   the thread local object
          * @param value the value to be set
          */
         private void set(ThreadLocal<?> key, Object value) {
@@ -544,11 +552,9 @@ public class ThreadLocal<T> {
 
             Entry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len-1);
+            int i = key.threadLocalHashCode & (len - 1);
 
-            for (Entry e = tab[i];
-                 e != null;
-                 e = tab[i = nextIndex(i, len)]) {
+            for (Entry e = tab[i]; e != null; e = tab[i = nextIndex(i, len)]) {
                 if (e.refersTo(key)) {
                     e.value = value;
                     return;
@@ -572,10 +578,8 @@ public class ThreadLocal<T> {
         private void remove(ThreadLocal<?> key) {
             Entry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len-1);
-            for (Entry e = tab[i];
-                 e != null;
-                 e = tab[i = nextIndex(i, len)]) {
+            int i = key.threadLocalHashCode & (len - 1);
+            for (Entry e = tab[i]; e != null; e = tab[i = nextIndex(i, len)]) {
                 if (e.refersTo(key)) {
                     e.clear();
                     expungeStaleEntry(i);
@@ -586,21 +590,21 @@ public class ThreadLocal<T> {
 
         /**
          * Replace a stale entry encountered during a set operation
-         * with an entry for the specified key.  The value passed in
+         * with an entry for the specified key. The value passed in
          * the value parameter is stored in the entry, whether or not
          * an entry already exists for the specified key.
          *
          * As a side effect, this method expunges all stale entries in the
-         * "run" containing the stale entry.  (A run is a sequence of entries
+         * "run" containing the stale entry. (A run is a sequence of entries
          * between two null slots.)
          *
-         * @param  key the key
-         * @param  value the value to be associated with key
-         * @param  staleSlot index of the first stale entry encountered while
-         *         searching for key.
+         * @param key       the key
+         * @param value     the value to be associated with key
+         * @param staleSlot index of the first stale entry encountered while
+         *                  searching for key.
          */
         private void replaceStaleEntry(ThreadLocal<?> key, Object value,
-                                       int staleSlot) {
+                int staleSlot) {
             Entry[] tab = table;
             int len = tab.length;
             Entry e;
@@ -610,17 +614,13 @@ public class ThreadLocal<T> {
             // incremental rehashing due to garbage collector freeing
             // up refs in bunches (i.e., whenever the collector runs).
             int slotToExpunge = staleSlot;
-            for (int i = prevIndex(staleSlot, len);
-                 (e = tab[i]) != null;
-                 i = prevIndex(i, len))
+            for (int i = prevIndex(staleSlot, len); (e = tab[i]) != null; i = prevIndex(i, len))
                 if (e.refersTo(null))
                     slotToExpunge = i;
 
             // Find either the key or trailing null slot of run, whichever
             // occurs first
-            for (int i = nextIndex(staleSlot, len);
-                 (e = tab[i]) != null;
-                 i = nextIndex(i, len)) {
+            for (int i = nextIndex(staleSlot, len); (e = tab[i]) != null; i = nextIndex(i, len)) {
                 // If we find key, then we need to swap it
                 // with the stale entry to maintain hash table order.
                 // The newly stale slot, or any other stale slot
@@ -657,14 +657,14 @@ public class ThreadLocal<T> {
 
         /**
          * Expunge a stale entry by rehashing any possibly colliding entries
-         * lying between staleSlot and the next null slot.  This also expunges
-         * any other stale entries encountered before the trailing null.  See
+         * lying between staleSlot and the next null slot. This also expunges
+         * any other stale entries encountered before the trailing null. See
          * Knuth, Section 6.4
          *
          * @param staleSlot index of slot known to have null key
          * @return the index of the next null slot after staleSlot
-         * (all between staleSlot and this slot will have been checked
-         * for expunging).
+         *         (all between staleSlot and this slot will have been checked
+         *         for expunging).
          */
         private int expungeStaleEntry(int staleSlot) {
             Entry[] tab = table;
@@ -678,9 +678,7 @@ public class ThreadLocal<T> {
             // Rehash until we encounter null
             Entry e;
             int i;
-            for (i = nextIndex(staleSlot, len);
-                 (e = tab[i]) != null;
-                 i = nextIndex(i, len)) {
+            for (i = nextIndex(staleSlot, len); (e = tab[i]) != null; i = nextIndex(i, len)) {
                 ThreadLocal<?> k = e.get();
                 if (k == null) {
                     e.value = null;
@@ -712,17 +710,17 @@ public class ThreadLocal<T> {
          * garbage but would cause some insertions to take O(n) time.
          *
          * @param i a position known NOT to hold a stale entry. The
-         * scan starts at the element after i.
+         *          scan starts at the element after i.
          *
          * @param n scan control: {@code log2(n)} cells are scanned,
-         * unless a stale entry is found, in which case
-         * {@code log2(table.length)-1} additional cells are scanned.
-         * When called from insertions, this parameter is the number
-         * of elements, but when from replaceStaleEntry, it is the
-         * table length. (Note: all this could be changed to be either
-         * more or less aggressive by weighting n instead of just
-         * using straight log n. But this version is simple, fast, and
-         * seems to work well.)
+         *          unless a stale entry is found, in which case
+         *          {@code log2(table.length)-1} additional cells are scanned.
+         *          When called from insertions, this parameter is the number
+         *          of elements, but when from replaceStaleEntry, it is the
+         *          table length. (Note: all this could be changed to be either
+         *          more or less aggressive by weighting n instead of just
+         *          using straight log n. But this version is simple, fast, and
+         *          seems to work well.)
          *
          * @return true if any stale entries have been removed.
          */
@@ -738,7 +736,7 @@ public class ThreadLocal<T> {
                     removed = true;
                     i = expungeStaleEntry(i);
                 }
-            } while ( (n >>>= 1) != 0);
+            } while ((n >>>= 1) != 0);
             return removed;
         }
 
@@ -799,7 +797,6 @@ public class ThreadLocal<T> {
         }
     }
 
-
     /**
      * Reads the value of the jdk.traceVirtualThreadLocals property to determine if
      * a stack trace should be printed when a virtual thread sets a thread local.
@@ -816,9 +813,8 @@ public class ThreadLocal<T> {
     static void dumpStackIfVirtualThread() {
         if (Thread.currentThread() instanceof VirtualThread vthread) {
             try {
-                var stack = StackWalkerHolder.STACK_WALKER.walk(s ->
-                        s.skip(1)  // skip caller
-                         .collect(Collectors.toList()));
+                var stack = StackWalkerHolder.STACK_WALKER.walk(s -> s.skip(1) // skip caller
+                        .collect(Collectors.toList()));
 
                 // switch to carrier thread to avoid recursive use of thread-locals
                 vthread.executeOnCarrierThread(() -> {
