@@ -44,19 +44,18 @@ package java.util.concurrent;
 public interface RejectedExecutionHandler {
 
     /**
-     * Method that may be invoked by a {@link ThreadPoolExecutor} when
-     * {@link ThreadPoolExecutor#execute execute} cannot accept a
-     * task.  This may occur when no more threads or queue slots are
-     * available because their bounds would be exceeded, or upon
-     * shutdown of the Executor.
+     * 可能由 {@link ThreadPoolExecutor} 调用的方法，当
+     * {@link ThreadPoolExecutor#execute execute} 无法接受一个
+     * 任务时。这可能会发生在没有更多的线程或队列空间可用，
+     * 因为它们的限制已经被达到，或者在 Executor 关闭时。
      *
-     * <p>In the absence of other alternatives, the method may throw
-     * an unchecked {@link RejectedExecutionException}, which will be
-     * propagated to the caller of {@code execute}.
+     * <p>如果没有其他的替代方案，该方法可能会抛出
+     * 一个未检查的 {@link RejectedExecutionException} 异常，
+     * 这个异常会被传播给调用 {@code execute} 方法的调用者。
      *
-     * @param r the runnable task requested to be executed
-     * @param executor the executor attempting to execute this task
-     * @throws RejectedExecutionException if there is no remedy
+     * @param r 请求执行的 Runnable 任务
+     * @param executor 尝试执行此任务的 Executor
+     * @throws RejectedExecutionException 如果没有解决办法
      */
     void rejectedExecution(Runnable r, ThreadPoolExecutor executor);
 }

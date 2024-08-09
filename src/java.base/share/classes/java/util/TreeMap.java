@@ -1,28 +1,3 @@
-/*
- * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
-
 package java.util;
 
 import java.io.Serializable;
@@ -32,85 +7,51 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * A Red-Black tree based {@link NavigableMap} implementation.
- * The map is sorted according to the {@linkplain Comparable natural
- * ordering} of its keys, or by a {@link Comparator} provided at map
- * creation time, depending on which constructor is used.
+ * 一个基于红黑树的 {@link NavigableMap} 实现。
+ * 该映射根据其键的 {@linkplain Comparable 自然顺序} 或在映射创建时提供的 {@link Comparator} 进行排序，具体取决于使用的构造函数。
  *
- * <p>This implementation provides guaranteed log(n) time cost for the
- * {@code containsKey}, {@code get}, {@code put} and {@code remove}
- * operations.  Algorithms are adaptations of those in Cormen, Leiserson, and
- * Rivest's <em>Introduction to Algorithms</em>.
+ * <p>此实现为 {@code containsKey}、{@code get}、{@code put} 和 {@code remove}
+ * 操作提供了对数时间复杂度（log(n)）的保证。算法是对 Cormen、Leiserson 和 Rivest 的<em>算法导论</em>中的算法的改编。
  *
- * <p>Note that the ordering maintained by a tree map, like any sorted map, and
- * whether or not an explicit comparator is provided, must be <em>consistent
- * with {@code equals}</em> if this sorted map is to correctly implement the
- * {@code Map} interface.  (See {@code Comparable} or {@code Comparator} for a
- * precise definition of <em>consistent with equals</em>.)  This is so because
- * the {@code Map} interface is defined in terms of the {@code equals}
- * operation, but a sorted map performs all key comparisons using its {@code
- * compareTo} (or {@code compare}) method, so two keys that are deemed equal by
- * this method are, from the standpoint of the sorted map, equal.  The behavior
- * of a sorted map <em>is</em> well-defined even if its ordering is
- * inconsistent with {@code equals}; it just fails to obey the general contract
- * of the {@code Map} interface.
+ * <p>请注意，像任何排序映射一样，由树映射维护的排序，以及是否提供显式比较器，必须与 {@code equals} <em>一致</em>，以便此排序映射能够正确实现 {@code Map} 接口。
+ * （有关与 equals 一致的精确定义，请参见 {@code Comparable} 或 {@code Comparator}。）
+ * 这是因为 {@code Map} 接口是根据 {@code equals} 操作定义的，但排序映射使用其 {@code compareTo}（或 {@code compare}）方法执行所有键比较，
+ * 因此根据该方法被认为相等的两个键在排序映射的角度来看是相等的。
+ * 即使其排序与 {@code equals} 不一致，排序映射的行为也是<em>良定义的</em>；
+ * 只是不符合 {@code Map} 接口的一般约定。
  *
- * <p><strong>Note that this implementation is not synchronized.</strong>
- * If multiple threads access a map concurrently, and at least one of the
- * threads modifies the map structurally, it <em>must</em> be synchronized
- * externally.  (A structural modification is any operation that adds or
- * deletes one or more mappings; merely changing the value associated
- * with an existing key is not a structural modification.)  This is
- * typically accomplished by synchronizing on some object that naturally
- * encapsulates the map.
- * If no such object exists, the map should be "wrapped" using the
- * {@link Collections#synchronizedSortedMap Collections.synchronizedSortedMap}
- * method.  This is best done at creation time, to prevent accidental
- * unsynchronized access to the map: <pre>
+ * <p><strong>请注意，此实现不是线程安全的。</strong>
+ * 如果多个线程同时访问一个映射，并且至少有一个线程结构性地修改了映射，则<em>必须</em>在外部进行同步。
+ * （结构修改是添加或删除一个或多个映射的任何操作；仅更改与现有键相关联的值不是结构修改。）
+ * 这通常通过同步封装映射的某个对象来实现。
+ * 如果没有这样的对象存在，映射应使用 {@link Collections#synchronizedSortedMap Collections.synchronizedSortedMap} 方法进行“包装”。
+ * 最好在创建时完成，以防止意外的未同步访问映射：<pre>
  *   SortedMap m = Collections.synchronizedSortedMap(new TreeMap(...));</pre>
  *
- * <p>The iterators returned by the {@code iterator} method of the collections
- * returned by all of this class's "collection view methods" are
- * <em>fail-fast</em>: if the map is structurally modified at any time after
- * the iterator is created, in any way except through the iterator's own
- * {@code remove} method, the iterator will throw a {@link
- * ConcurrentModificationException}.  Thus, in the face of concurrent
- * modification, the iterator fails quickly and cleanly, rather than risking
- * arbitrary, non-deterministic behavior at an undetermined time in the future.
+ * <p>此类的“集合视图方法”返回的集合的 {@code iterator} 方法返回的迭代器是<em>快速失败的</em>：
+ * 如果在创建迭代器之后的任何时间对映射进行结构修改（除了通过迭代器自己的 {@code remove} 方法进行修改），
+ * 迭代器将抛出 {@link ConcurrentModificationException}。
+ * 因此，面对并发修改，迭代器快速、干净地失败，而不是冒着在将来的不确定时间发生任意的、不确定的行为的风险。
  *
- * <p>Note that the fail-fast behavior of an iterator cannot be guaranteed
- * as it is, generally speaking, impossible to make any hard guarantees in the
- * presence of unsynchronized concurrent modification.  Fail-fast iterators
- * throw {@code ConcurrentModificationException} on a best-effort basis.
- * Therefore, it would be wrong to write a program that depended on this
- * exception for its correctness:   <em>the fail-fast behavior of iterators
- * should be used only to detect bugs.</em>
+ * <p>请注意，迭代器的快速失败行为不能保证，因为在存在未同步并发修改的情况下，一般而言，不可能做出任何硬保证。
+ * 快速失败迭代器会在尽力而为的基础上抛出 {@code ConcurrentModificationException}。
+ * 因此，编写依赖于此异常的程序以保证其正确性是错误的：<em>迭代器的快速失败行为仅应用于检测错误。</em>
  *
- * <p>The methods
- * {@link #ceilingEntry},
- * {@link #firstEntry},
- * {@link #floorEntry},
- * {@link #higherEntry},
- * {@link #lastEntry},
- * {@link #lowerEntry},
- * {@link #pollFirstEntry}, and
- * {@link #pollLastEntry}
- * return {@link Map.Entry} instances that represent snapshots of mappings as
- * of the time of the call. They do <em>not</em> support mutation of the
- * underlying map via the optional {@link Map.Entry#setValue setValue} method.
+ * <p>方法 {@link #ceilingEntry}、{@link #firstEntry}、{@link #floorEntry}、{@link #higherEntry}、
+ * {@link #lastEntry}、{@link #lowerEntry}、{@link #pollFirstEntry} 和 {@link #pollLastEntry}
+ * 返回的 {@link Map.Entry} 实例表示调用时的映射快照。
+ * 它们不支持通过可选的 {@link Map.Entry#setValue setValue} 方法修改基础映射。
  *
- * <p>The {@link #putFirst putFirst} and {@link #putLast putLast} methods of this class
- * throw {@code UnsupportedOperationException}. The encounter order of mappings is determined
- * by the comparison method; therefore, explicit positioning is not supported.
+ * <p>此类的 {@link #putFirst putFirst} 和 {@link #putLast putLast} 方法抛出 {@code UnsupportedOperationException}。
+ * 映射的遇见顺序由比较方法决定，因此不支持显式定位。
  *
- * <p>This class is a member of the
- * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
- * Java Collections Framework</a>.
+ * <p>此类是 <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
+ * Java 集合框架</a> 的成员。
  *
- * @param <K> the type of keys maintained by this map
- * @param <V> the type of mapped values
+ * @param <K> 此映射维护的键的类型
+ * @param <V> 映射值的类型
  *
- * @author  Josh Bloch and Doug Lea
+ * @author  Josh Bloch 和 Doug Lea
  * @see Map
  * @see HashMap
  * @see Hashtable
@@ -119,6 +60,7 @@ import java.util.function.Function;
  * @see Collection
  * @since 1.2
  */
+
 
 public class TreeMap<K,V>
     extends AbstractMap<K,V>

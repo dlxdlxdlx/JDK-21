@@ -1,178 +1,96 @@
-/*
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
-
-/*
- * This file is available under and governed by the GNU General Public
- * License version 2 only, as published by the Free Software Foundation.
- * However, the following notice accompanied the original version of this
- * file:
- *
- * Written by Doug Lea and Josh Bloch with assistance from members of JCP
- * JSR-166 Expert Group and released to the public domain, as explained at
- * http://creativecommons.org/publicdomain/zero/1.0/
- */
-
 package java.util;
-
 /**
- * A {@link SortedMap} extended with navigation methods returning the
- * closest matches for given search targets. Methods
- * {@link #lowerEntry}, {@link #floorEntry}, {@link #ceilingEntry},
- * and {@link #higherEntry} return {@code Map.Entry} objects
- * associated with keys respectively less than, less than or equal,
- * greater than or equal, and greater than a given key, returning
- * {@code null} if there is no such key.  Similarly, methods
- * {@link #lowerKey}, {@link #floorKey}, {@link #ceilingKey}, and
- * {@link #higherKey} return only the associated keys. All of these
- * methods are designed for locating, not traversing entries.
+ * 一个扩展了导航方法的 {@link SortedMap}，用于返回与给定搜索目标最匹配的结果。
+ * 方法 {@link #lowerEntry}、{@link #floorEntry}、{@link #ceilingEntry} 和 {@link #higherEntry}
+ * 返回与键分别小于、小于等于、大于等于和大于给定键的 {@code Map.Entry} 对象，如果没有这样的键，则返回 {@code null}。
+ * 类似地，方法 {@link #lowerKey}、{@link #floorKey}、{@link #ceilingKey} 和 {@link #higherKey} 仅返回相关联的键。
+ * 所有这些方法都是为定位而设计的，而不是用于遍历条目。
  *
- * <p>A {@code NavigableMap} may be accessed and traversed in either
- * ascending or descending key order.  The {@link #descendingMap}
- * method returns a view of the map with the senses of all relational
- * and directional methods inverted. The performance of ascending
- * operations and views is likely to be faster than that of descending
- * ones.  Methods
- * {@link #subMap(Object, boolean, Object, boolean) subMap(K, boolean, K, boolean)},
- * {@link #headMap(Object, boolean) headMap(K, boolean)}, and
- * {@link #tailMap(Object, boolean) tailMap(K, boolean)}
- * differ from the like-named {@code SortedMap} methods in accepting
- * additional arguments describing whether lower and upper bounds are
- * inclusive versus exclusive.  Submaps of any {@code NavigableMap}
- * must implement the {@code NavigableMap} interface.
+ * <p>{@code NavigableMap} 可以按升序或降序键顺序访问和遍历。
+ * {@link #descendingMap} 方法返回一个视图，该视图中的所有关系和方向方法的感觉都是颠倒的。
+ * 升序操作和视图的性能可能比降序的更快。
+ * 方法 {@link #subMap(Object, boolean, Object, boolean) subMap(K, boolean, K, boolean)}、
+ * {@link #headMap(Object, boolean) headMap(K, boolean)} 和 {@link #tailMap(Object, boolean) tailMap(K, boolean)}
+ * 与同名的 {@code SortedMap} 方法不同，它们接受附加参数来描述下界和上界是包含还是排除。
+ * 任何 {@code NavigableMap} 的子图必须实现 {@code NavigableMap} 接口。
  *
- * <p>This interface additionally defines methods {@link #firstEntry},
- * {@link #pollFirstEntry}, {@link #lastEntry}, and
- * {@link #pollLastEntry} that return and/or remove the least and
- * greatest mappings, if any exist, else returning {@code null}.
+ * <p>此接口还定义了方法 {@link #firstEntry}、{@link #pollFirstEntry}、{@link #lastEntry} 和 {@link #pollLastEntry}，
+ * 它们返回和/或移除最小和最大的映射（如果存在），否则返回 {@code null}。
  *
- * <p>The methods
- * {@link #ceilingEntry},
- * {@link #firstEntry},
- * {@link #floorEntry},
- * {@link #higherEntry},
- * {@link #lastEntry},
- * {@link #lowerEntry},
- * {@link #pollFirstEntry}, and
- * {@link #pollLastEntry}
- * return {@link Map.Entry} instances that represent snapshots of mappings as
- * of the time of the call. They do <em>not</em> support mutation of the
- * underlying map via the optional {@link Map.Entry#setValue setValue} method.
+ * <p>方法 {@link #ceilingEntry}、{@link #firstEntry}、{@link #floorEntry}、{@link #higherEntry}、{@link #lastEntry}、
+ * {@link #lowerEntry}、{@link #pollFirstEntry} 和 {@link #pollLastEntry} 返回 {@link Map.Entry} 实例，
+ * 它们表示调用时的映射快照。它们不支持通过可选的 {@link Map.Entry#setValue setValue} 方法修改基础映射。
  *
- * <p>Methods
- * {@link #subMap(Object, Object) subMap(K, K)},
- * {@link #headMap(Object) headMap(K)}, and
- * {@link #tailMap(Object) tailMap(K)}
- * are specified to return {@code SortedMap} to allow existing
- * implementations of {@code SortedMap} to be compatibly retrofitted to
- * implement {@code NavigableMap}, but extensions and implementations
- * of this interface are encouraged to override these methods to return
- * {@code NavigableMap}.  Similarly,
- * {@link #keySet()} can be overridden to return {@link NavigableSet}.
+ * <p>方法 {@link #subMap(Object, Object) subMap(K, K)}、{@link #headMap(Object) headMap(K)} 和 {@link #tailMap(Object) tailMap(K)}
+ * 指定返回 {@code SortedMap}，以允许现有的 {@code SortedMap} 实现兼容地进行改造以实现 {@code NavigableMap}，
+ * 但鼓励此接口的扩展和实现覆盖这些方法以返回 {@code NavigableMap}。
+ * 同样，{@link #keySet()} 可以覆盖以返回 {@link NavigableSet}。
  *
- * <p>This interface is a member of the
+ * <p>此接口是
  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
- * Java Collections Framework</a>.
+ * Java Collections Framework</a> 的成员。
  *
- * @author Doug Lea
- * @author Josh Bloch
- * @param <K> the type of keys maintained by this map
- * @param <V> the type of mapped values
+ * @param <K> 此映射维护的键的类型
+ * @param <V> 映射值的类型
  * @since 1.6
  */
+
 public interface NavigableMap<K,V> extends SortedMap<K,V> {
-    /**
-     * Returns a key-value mapping associated with the greatest key
-     * strictly less than the given key, or {@code null} if there is
-     * no such key.
-     *
-     * @param key the key
-     * @return an entry with the greatest key less than {@code key},
-     *         or {@code null} if there is no such key
-     * @throws ClassCastException if the specified key cannot be compared
-     *         with the keys currently in the map
-     * @throws NullPointerException if the specified key is null
-     *         and this map does not permit null keys
-     */
-    Map.Entry<K,V> lowerEntry(K key);
+	/**
+	 * 返回与严格小于给定键的最大键相关联的键值映射，如果没有这样的键，则返回 {@code null}。
+	 *
+	 * @param key 键
+	 * @return 与小于 {@code key} 的最大键相关联的条目，
+	 *		   如果没有这样的键，则返回 {@code null}
+	 * @throws ClassCastException 如果指定的键不能与当前映射中的键进行比较
+	 * @throws NullPointerException 如果指定的键为 null 且此映射不允许 null 键
+	 */
+	Map.Entry<K,V> lowerEntry(K key);
+	
+	/**
+	 * 返回严格小于给定键的最大键，如果没有这样的键，则返回 {@code null}。
+	 *
+	 * @param key 键
+	 * @return 小于 {@code key} 的最大键，
+	 *		   如果没有这样的键，则返回 {@code null}
+	 * @throws ClassCastException 如果指定的键不能与当前映射中的键进行比较
+	 * @throws NullPointerException 如果指定的键为 null 且此映射不允许 null 键
+	 */
+	K lowerKey(K key);
+	
+	/**
+	 * 返回与小于或等于给定键的最大键相关联的键值映射，如果没有这样的键，则返回 {@code null}。
+	 *
+	 * @param key 键
+	 * @return 与小于或等于 {@code key} 的最大键相关联的条目，
+	 *		   如果没有这样的键，则返回 {@code null}
+	 * @throws ClassCastException 如果指定的键不能与当前映射中的键进行比较
+	 * @throws NullPointerException 如果指定的键为 null 且此映射不允许 null 键
+	 */
+	Map.Entry<K,V> floorEntry(K key);
+	
+	/**
+	 * 返回小于或等于给定键的最大键，如果没有这样的键，则返回 {@code null}。
+	 *
+	 * @param key 键
+	 * @return 小于或等于 {@code key} 的最大键，
+	 *		   如果没有这样的键，则返回 {@code null}
+	 * @throws ClassCastException 如果指定的键不能与当前映射中的键进行比较
+	 * @throws NullPointerException 如果指定的键为 null 且此映射不允许 null 键
+	 */
+	K floorKey(K key);
+	
+	/**
+	 * 返回与大于或等于给定键的最小键相关联的键值映射，如果没有这样的键，则返回 {@code null}。
+	 *
+	 * @param key 键
+	 * @return 与大于或等于 {@code key} 的最小键相关联的条目，
+	 *		   如果没有这样的键，则返回 {@code null}
+	 * @throws ClassCastException 如果指定的键不能与当前映射中的键进行比较
+	 * @throws NullPointerException 如果指定的键为 null 且此映射不允许 null 键
+	 */
+	Map.Entry<K,V> ceilingEntry(K key);
 
-    /**
-     * Returns the greatest key strictly less than the given key, or
-     * {@code null} if there is no such key.
-     *
-     * @param key the key
-     * @return the greatest key less than {@code key},
-     *         or {@code null} if there is no such key
-     * @throws ClassCastException if the specified key cannot be compared
-     *         with the keys currently in the map
-     * @throws NullPointerException if the specified key is null
-     *         and this map does not permit null keys
-     */
-    K lowerKey(K key);
-
-    /**
-     * Returns a key-value mapping associated with the greatest key
-     * less than or equal to the given key, or {@code null} if there
-     * is no such key.
-     *
-     * @param key the key
-     * @return an entry with the greatest key less than or equal to
-     *         {@code key}, or {@code null} if there is no such key
-     * @throws ClassCastException if the specified key cannot be compared
-     *         with the keys currently in the map
-     * @throws NullPointerException if the specified key is null
-     *         and this map does not permit null keys
-     */
-    Map.Entry<K,V> floorEntry(K key);
-
-    /**
-     * Returns the greatest key less than or equal to the given key,
-     * or {@code null} if there is no such key.
-     *
-     * @param key the key
-     * @return the greatest key less than or equal to {@code key},
-     *         or {@code null} if there is no such key
-     * @throws ClassCastException if the specified key cannot be compared
-     *         with the keys currently in the map
-     * @throws NullPointerException if the specified key is null
-     *         and this map does not permit null keys
-     */
-    K floorKey(K key);
-
-    /**
-     * Returns a key-value mapping associated with the least key
-     * greater than or equal to the given key, or {@code null} if
-     * there is no such key.
-     *
-     * @param key the key
-     * @return an entry with the least key greater than or equal to
-     *         {@code key}, or {@code null} if there is no such key
-     * @throws ClassCastException if the specified key cannot be compared
-     *         with the keys currently in the map
-     * @throws NullPointerException if the specified key is null
-     *         and this map does not permit null keys
-     */
-    Map.Entry<K,V> ceilingEntry(K key);
 
     /**
      * Returns the least key greater than or equal to the given key,

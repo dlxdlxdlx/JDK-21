@@ -1362,24 +1362,18 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         if (command == null)
             throw new NullPointerException();
         /*
-         * Proceed in 3 steps:
+         * 按照以下3个步骤进行：
          *
-         * 1. If fewer than corePoolSize threads are running, try to
-         * start a new thread with the given command as its first
-         * task. The call to addWorker atomically checks runState and
-         * workerCount, and so prevents false alarms that would add
-         * threads when it shouldn't, by returning false.
+         * 1. 如果运行中的线程少于 corePoolSize（核心线程数），尝试启动一个新的线程，并将给定的任务作为它的首个任务。
+         *    调用 addWorker 方法原子性地检查 runState 和 workerCount，从而避免在不应该添加线程的情况下误添加线程，
+         *    如果不应该添加线程，则返回 false。
          *
-         * 2. If a task can be successfully queued, then we still need
-         * to double-check whether we should have added a thread
-         * (because existing ones died since last checking) or that
-         * the pool shut down since entry into this method. So we
-         * recheck state and if necessary roll back the enqueuing if
-         * stopped, or start a new thread if there are none.
+         * 2. 如果任务能够成功加入队列，那么我们还需要再次检查是否应该添加线程（因为上次检查后可能有线程死亡）或者
+         *    自从进入此方法以来线程池是否已经关闭。因此，我们重新检查状态；如果线程池已停止，则撤销任务入队；
+         *    或者如果没有线程可用，则启动新的线程。
          *
-         * 3. If we cannot queue task, then we try to add a new
-         * thread. If it fails, we know we are shut down or saturated
-         * and so reject the task.
+         * 3. 如果无法将任务加入队列，则尝试添加一个新的线程。如果添加失败，我们知道线程池要么已经关闭要么已经饱和，
+         *    因此拒绝该任务。
          */
         int c = ctl.get();
         if (workerCountOf(c) < corePoolSize) {
@@ -1787,22 +1781,16 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         return workQueue;
     }
 
-    /**
-     * Removes this task from the executor's internal queue if it is
-     * present, thus causing it not to be run if it has not already
-     * started.
+      /**
+     * 如果这个任务存在于执行器的内部队列中，则将其移除，从而导致该任务不会被执行（如果它还没有开始执行的话）。
      *
      * <p>
-     * This method may be useful as one part of a cancellation
-     * scheme. It may fail to remove tasks that have been converted
-     * into other forms before being placed on the internal queue.
-     * For example, a task entered using {@code submit} might be
-     * converted into a form that maintains {@code Future} status.
-     * However, in such cases, method {@link #purge} may be used to
-     * remove those Futures that have been cancelled.
+     * 此方法可以作为取消策略的一部分而变得有用。但是，对于那些在放入内部队列之前已经被转换成其他形式的任务，
+     * 该方法可能无法移除它们。例如，使用 {@code submit} 提交的任务可能会被转换成一种维护 {@code Future} 状态的形式。
+     * 但是，在这种情况下，可以使用方法 {@link #purge} 来移除已被取消的那些 {@code Future}。
      *
-     * @param task the task to remove
-     * @return {@code true} if the task was removed
+     * @param task 需要移除的任务
+     * @return 如果任务被成功移除则返回 {@code true}
      */
     public boolean remove(Runnable task) {
         boolean removed = workQueue.remove(task);
@@ -2141,12 +2129,10 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     }
 
     /**
-     * A handler for rejected tasks that discards the oldest unhandled
-     * request and then retries {@code execute}, unless the executor
-     * is shut down, in which case the task is discarded. This policy is
-     * rarely useful in cases where other threads may be waiting for
-     * tasks to terminate, or failures must be recorded. Instead consider
-     * using a handler of the form:
+     * 用于处理被拒绝的任务的处理器，它会丢弃最老的未处理请求，
+     * 然后重试 {@code execute} 方法，除非 Executor 已经关闭，在这种情况下
+     * 任务将被丢弃。此策略很少在其他线程可能正在等待任务结束或必须记录失败的情况下有用。
+     * 相反，可以考虑使用以下形式的处理器：
      * 
      * <pre> {@code
      * new RejectedExecutionHandler() {
@@ -2154,28 +2140,26 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      *         Runnable dropped = e.getQueue().poll();
      *         if (dropped instanceof Future<?>) {
      *             ((Future<?>) dropped).cancel(false);
-     *             // also consider logging the failure
+     *             // 同时考虑记录失败
      *         }
-     *         e.execute(r); // retry
+     *         e.execute(r); // 重试
      *     }
      * }
      * }</pre>
      */
     public static class DiscardOldestPolicy implements RejectedExecutionHandler {
         /**
-         * Creates a {@code DiscardOldestPolicy} for the given executor.
+         * 创建一个用于给定 Executor 的 {@code DiscardOldestPolicy} 实例。
          */
         public DiscardOldestPolicy() {
         }
 
         /**
-         * Obtains and ignores the next task that the executor
-         * would otherwise execute, if one is immediately available,
-         * and then retries execution of task r, unless the executor
-         * is shut down, in which case task r is instead discarded.
+         * 获取并忽略 Executor 否则会执行的下一个任务（如果立即可用），
+         * 然后重试执行任务 r，除非 Executor 已经关闭，在这种情况下任务 r 被丢弃。
          *
-         * @param r the runnable task requested to be executed
-         * @param e the executor attempting to execute this task
+         * @param r 请求执行的 Runnable 任务
+         * @param e 尝试执行此任务的 Executor
          */
         public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
             if (!e.isShutdown()) {

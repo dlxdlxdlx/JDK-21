@@ -1,26 +1,17 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ * 版权所有 (c) 2021, 2023, Oracle 及/或其关联公司。保留所有权利。
+ * 请勿更改或移除版权声明或此文件头。
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * 本代码是自由软件；您可以在 GNU 通用公共许可证版本 2 的条款下重新发布和/或修改，
+ * 由自由软件基金会发布。Oracle 指定此特定文件适用“Classpath”例外，如 LICENSE 文件中所述。
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * 本代码发布的目的是希望它会有用，但没有任何保证；甚至没有适销性或特定用途适用性的隐含保证。
+ * 有关更多详细信息，请参阅随附此代码的 LICENSE 文件中的 GNU 通用公共许可证版本 2。
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * 您应该已经收到与此作品一起提供的 GNU 通用公共许可证版本 2 的副本；
+ * 如果没有，请写信至自由软件基金会，Inc.，地址为 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA。
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * 如果您需要更多信息或有任何问题，请联系 Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA 或访问 www.oracle.com。
  */
 
 package java.util;
@@ -28,125 +19,91 @@ package java.util;
 import jdk.internal.util.NullableKeyValueHolder;
 
 /**
- * A Map that has a well-defined encounter order, that supports operations at both ends, and
- * that is reversible. The <a href="SequencedCollection.html#encounter">encounter order</a>
- * of a {@code SequencedMap} is similar to that of the elements of a {@link SequencedCollection},
- * but the ordering applies to mappings instead of individual elements.
+ * 表示一个具有明确顺序的 Map，支持在两端进行操作，并且是可逆的。
+ * {@code SequencedMap} 的<概念顺序>类似于 {@link SequencedCollection} 的元素顺序，
+ * 但排序适用于映射而不是单个元素。
  * <p>
- * The bulk operations on this map, including the {@link #forEach forEach} and the
- * {@link #replaceAll replaceAll} methods, operate on this map's mappings in
- * encounter order.
+ * 该 Map 上的批量操作，包括 {@link #forEach forEach} 和 {@link #replaceAll replaceAll} 方法，
+ * 都在此 Map 的遇见顺序（encounter order）中操作。
  * <p>
- * The view collections provided by the
- * {@link #keySet keySet},
- * {@link #values values},
- * {@link #entrySet entrySet},
- * {@link #sequencedKeySet sequencedKeySet},
- * {@link #sequencedValues sequencedValues},
- * and
- * {@link #sequencedEntrySet sequencedEntrySet} methods all reflect the encounter order
- * of this map. Even though the return values of the {@code keySet}, {@code values}, and
- * {@code entrySet} methods are not sequenced <i>types</i>, the elements
- * in those view collections do reflect the encounter order of this map. Thus, the
- * iterators returned by the statements
+ * 通过 {@link #keySet keySet}、{@link #values values}、{@link #entrySet entrySet}、
+ * {@link #sequencedKeySet sequencedKeySet}、{@link #sequencedValues sequencedValues}、
+ * 和 {@link #sequencedEntrySet sequencedEntrySet} 方法提供的视图集合
+ * 都反映了此 Map 的遇见顺序。虽然 {@code keySet}、{@code values} 和 {@code entrySet}
+ * 方法的返回值不是排序<i>类型</i>，但这些视图集合中的元素确实反映了此 Map 的遇见顺序。
+ * 因此，以下语句返回的迭代器都提供了 {@code sequencedMap} 中映射的遇见顺序。
  * {@snippet :
  *     var it1 = sequencedMap.entrySet().iterator();
  *     var it2 = sequencedMap.sequencedEntrySet().iterator();
  * }
- * both provide the mappings of {@code sequencedMap} in that map's encounter order.
  * <p>
- * This interface provides methods to add mappings, to retrieve mappings, and to remove
- * mappings at either end of the map's encounter order.
+ * 该接口提供方法来添加映射、检索映射，以及在 Map 的遇见顺序的两端删除映射。
  * <p>
- * This interface also defines the {@link #reversed} method, which provides a
- * reverse-ordered <a href="Collection.html#view">view</a> of this map.
- * In the reverse-ordered view, the concepts of first and last are inverted, as
- * are the concepts of successor and predecessor. The first mapping of this map
- * is the last mapping of the reverse-ordered view, and vice-versa. The successor of some
- * mapping in this map is its predecessor in the reversed view, and vice-versa. All
- * methods that respect the encounter order of the map operate as if the encounter order
- * is inverted. For instance, the {@link #forEach forEach} method of the reversed view reports
- * the mappings in order from the last mapping of this map to the first. In addition, all of
- * the view collections of the reversed view also reflect the inverse of this map's
- * encounter order. For example,
+ * 该接口还定义了 {@link #reversed} 方法，该方法提供此 Map 的逆序<视图>。
+ * 在逆序视图中，首和尾的概念颠倒，后继和前驱的概念也是如此。
+ * 此 Map 的第一个映射是逆序视图的最后一个映射，反之亦然。
+ * 在逆序视图中，某个映射的后继是其在逆序视图中的前驱，反之亦然。
+ * 所有尊重 Map 的遇见顺序的方法都仿佛该顺序是倒置的。例如，
+ * 逆序视图的 {@link #forEach forEach} 方法按从此 Map 的最后一个映射到第一个映射的顺序报告映射。
+ * 此外，逆序视图的所有视图集合也反映了此 Map 的遇见顺序的逆序。
+ * 例如，
  * {@snippet :
  *     var itr = sequencedMap.reversed().entrySet().iterator();
  * }
- * provides the mappings of this map in the inverse of the encounter order, that is, from
- * the last mapping to the first mapping. The availability of the {@code reversed} method,
- * and its impact on the ordering semantics of all applicable methods and views, allow convenient
- * iteration, searching, copying, and streaming of this map's mappings in either forward order or
- * reverse order.
+ * 提供了此 Map 中映射的遇见顺序的逆序，即从最后一个映射到第一个映射。
+ * {@code reversed} 方法的可用性及其对所有适用方法和视图的排序语义的影响，
+ * 允许方便地按正序或逆序迭代、搜索、复制和流化此 Map 的映射。
  * <p>
- * A map's reverse-ordered view is generally not serializable, even if the original
- * map is serializable.
+ * Map 的逆序视图通常不可序列化，即使原始 Map 是可序列化的。
  * <p>
- * The {@link Map.Entry} instances obtained by iterating the {@link #entrySet} view, the
- * {@link #sequencedEntrySet} view, and its reverse-ordered view, maintain a connection to the
- * underlying map. This connection is guaranteed only during the iteration. It is unspecified
- * whether the connection is maintained outside of the iteration. If the underlying map permits
- * it, calling an Entry's {@link Map.Entry#setValue setValue} method will modify the value of the
- * underlying mapping. It is, however, unspecified whether modifications to the value in the
- * underlying mapping are visible in the {@code Entry} instance.
+ * 通过迭代 {@link #entrySet} 视图、{@link #sequencedEntrySet} 视图及其逆序视图获取的 {@link Map.Entry} 实例，
+ * 保持与基础 Map 的连接。此连接仅在迭代期间保证。未指定连接是否在迭代之外保持。
+ * 如果基础 Map 允许，调用 Entry 的 {@link Map.Entry#setValue setValue} 方法将修改基础映射的值。
+ * 然而，未指定基础映射值的修改是否在 {@code Entry} 实例中可见。
  * <p>
- * The methods
- * {@link #firstEntry},
- * {@link #lastEntry},
- * {@link #pollFirstEntry}, and
- * {@link #pollLastEntry}
- * return {@link Map.Entry} instances that represent snapshots of mappings as
- * of the time of the call. They do <em>not</em> support mutation of the
- * underlying map via the optional {@link Map.Entry#setValue setValue} method.
+ * 方法 {@link #firstEntry}、{@link #lastEntry}、{@link #pollFirstEntry} 和 {@link #pollLastEntry}
+ * 返回的 {@link Map.Entry} 实例表示调用时映射的快照。
+ * 它们不支持通过可选的 {@link Map.Entry#setValue setValue} 方法修改基础 Map。
  * <p>
- * Depending upon the implementation, the {@code Entry} instances returned by other
- * means might or might not be connected to the underlying map. For example, consider
- * an {@code Entry} obtained in the following manner:
+ * 根据实现的不同，其他方式返回的 {@code Entry} 实例可能与基础 Map 相连，也可能不相连。
+ * 例如，考虑以下方式获取的 {@code Entry}：
  * {@snippet :
  *     var entry = sequencedMap.sequencedEntrySet().getFirst();
  * }
- * It is not specified by this interface whether the {@code setValue} method of the
- * {@code Entry} thus obtained will update a mapping in the underlying map, or whether
- * it will throw an exception, or whether changes to the underlying map are visible in
- * that {@code Entry}.
+ * 本接口未指定通过这种方式获取的 {@code Entry} 的 {@code setValue} 方法是否会更新基础 Map 中的映射，
+ * 或者是否会抛出异常，或者对基础 Map 的更改是否在该 {@code Entry} 中可见。
  * <p>
- * This interface has the same requirements on the {@code equals} and {@code hashCode}
- * methods as defined by {@link Map#equals Map.equals} and {@link Map#hashCode Map.hashCode}.
- * Thus, a {@code Map} and a {@code SequencedMap} will compare equals if and only
- * if they have equal mappings, irrespective of ordering.
+ * 此接口对 {@code equals} 和 {@code hashCode} 方法的要求与 {@link Map#equals Map.equals} 和
+ * {@link Map#hashCode Map.hashCode} 的定义相同。因此，如果 {@code Map} 和 {@code SequencedMap}
+ * 具有相等的映射（不论顺序），则它们将比较为相等。
  * <p>
- * This class is a member of the
+ * 此类是
  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
- * Java Collections Framework</a>.
+ * Java Collections Framework</a> 的成员。
  *
- * @param <K> the type of keys maintained by this map
- * @param <V> the type of mapped values
+ * @param <K> 此 Map 维护的键的类型
+ * @param <V> 映射值的类型
  * @since 21
  */
 public interface SequencedMap<K, V> extends Map<K, V> {
     /**
-     * Returns a reverse-ordered <a href="Collection.html#view">view</a> of this map.
-     * The encounter order of mappings in the returned view is the inverse of the encounter
-     * order of mappings in this map. The reverse ordering affects all order-sensitive operations,
-     * including those on the view collections of the returned view. If the implementation permits
-     * modifications to this view, the modifications "write through" to the underlying map.
-     * Changes to the underlying map might or might not be visible in this reversed view,
-     * depending upon the implementation.
+     * 返回此 Map 的逆序<视图>。返回视图中映射的遇见顺序是此 Map 中映射的遇见顺序的逆序。
+     * 逆序影响所有对顺序敏感的操作，包括返回视图的视图集合上的操作。
+     * 如果实现允许对此视图进行修改，则修改会“写入”基础 Map。
+     * 对基础 Map 的更改在逆序视图中是否可见，取决于实现。
      *
-     * @return a reverse-ordered view of this map
+     * @return 此 Map 的逆序视图
      */
     SequencedMap<K, V> reversed();
 
     /**
-     * Returns the first key-value mapping in this map,
-     * or {@code null} if the map is empty.
+     * 返回此 Map 中的第一个键值映射，如果 Map 为空，则返回 {@code null}。
      *
      * @implSpec
-     * The implementation in this interface obtains the iterator of this map's entrySet.
-     * If the iterator has an element, it returns an unmodifiable copy of that element.
-     * Otherwise, it returns null.
+     * 此接口的实现获取此 Map 的 entrySet 的迭代器。
+     * 如果迭代器有一个元素，则返回该元素的不可修改副本。否则，返回 null。
      *
-     * @return the first key-value mapping,
-     *         or {@code null} if this map is empty
+     * @return 第一个键值映射，或如果此 Map 为空则返回 {@code null}
      */
     default Map.Entry<K,V> firstEntry() {
         var it = entrySet().iterator();
@@ -154,16 +111,13 @@ public interface SequencedMap<K, V> extends Map<K, V> {
     }
 
     /**
-     * Returns the last key-value mapping in this map,
-     * or {@code null} if the map is empty.
+     * 返回此 Map 中的最后一个键值映射，如果 Map 为空，则返回 {@code null}。
      *
      * @implSpec
-     * The implementation in this interface obtains the iterator of the entrySet of this map's
-     * reversed view. If the iterator has an element, it returns an unmodifiable copy of
-     * that element. Otherwise, it returns null.
+     * 此接口的实现获取此 Map 的逆序视图的 entrySet 的迭代器。
+     * 如果迭代器有一个元素，则返回该元素的不可修改副本。否则，返回 null。
      *
-     * @return the last key-value mapping,
-     *         or {@code null} if this map is empty
+     * @return 最后一个键值映射，或如果此 Map 为空则返回 {@code null}
      */
     default Map.Entry<K,V> lastEntry() {
         var it = reversed().entrySet().iterator();
@@ -171,182 +125,8 @@ public interface SequencedMap<K, V> extends Map<K, V> {
     }
 
     /**
-     * Removes and returns the first key-value mapping in this map,
-     * or {@code null} if the map is empty (optional operation).
+     * 移除并返回此 Map 中的第一个键值映射，如果 Map 为空，则返回 {@code null}（可选操作）。
      *
      * @implSpec
-     * The implementation in this interface obtains the iterator of this map's entrySet.
-     * If the iterator has an element, it calls {@code remove} on the iterator and
-     * then returns an unmodifiable copy of that element. Otherwise, it returns null.
-     *
-     * @return the removed first entry of this map,
-     *         or {@code null} if this map is empty
-     * @throws UnsupportedOperationException if this collection implementation does not
-     *         support this operation
-     */
-    default Map.Entry<K,V> pollFirstEntry() {
-        var it = entrySet().iterator();
-        if (it.hasNext()) {
-            var entry = new NullableKeyValueHolder<>(it.next());
-            it.remove();
-            return entry;
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Removes and returns the last key-value mapping in this map,
-     * or {@code null} if the map is empty (optional operation).
-     *
-     * @implSpec
-     * The implementation in this interface obtains the iterator of the entrySet of this map's
-     * reversed view. If the iterator has an element, it calls {@code remove} on the iterator
-     * and then returns an unmodifiable copy of that element. Otherwise, it returns null.
-     *
-     * @return the removed last entry of this map,
-     *         or {@code null} if this map is empty
-     * @throws UnsupportedOperationException if this collection implementation does not
-     *         support this operation
-     */
-    default Map.Entry<K,V> pollLastEntry() {
-        var it = reversed().entrySet().iterator();
-        if (it.hasNext()) {
-            var entry = new NullableKeyValueHolder<>(it.next());
-            it.remove();
-            return entry;
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Inserts the given mapping into the map if it is not already present, or replaces the
-     * value of a mapping if it is already present (optional operation). After this operation
-     * completes normally, the given mapping will be present in this map, and it will be the
-     * first mapping in this map's encounter order.
-     *
-     * @implSpec The implementation in this interface always throws
-     * {@code UnsupportedOperationException}.
-     *
-     * @param k the key
-     * @param v the value
-     * @return the value previously associated with k, or null if none
-     * @throws UnsupportedOperationException if this collection implementation does not
-     *         support this operation
-     */
-    default V putFirst(K k, V v) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Inserts the given mapping into the map if it is not already present, or replaces the
-     * value of a mapping if it is already present (optional operation). After this operation
-     * completes normally, the given mapping will be present in this map, and it will be the
-     * last mapping in this map's encounter order.
-     *
-     * @implSpec The implementation in this interface always throws
-     * {@code UnsupportedOperationException}.
-     *
-     * @param k the key
-     * @param v the value
-     * @return the value previously associated with k, or null if none
-     * @throws UnsupportedOperationException if this collection implementation does not
-     *         support this operation
-     */
-    default V putLast(K k, V v) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Returns a {@code SequencedSet} view of this map's {@link #keySet keySet}.
-     *
-     * @implSpec
-     * The implementation in this interface returns a {@code SequencedSet} instance
-     * that behaves as follows. Its {@link SequencedSet#add add} and {@link
-     * SequencedSet#addAll addAll} methods throw {@link UnsupportedOperationException}.
-     * Its {@link SequencedSet#reversed reversed} method returns the {@link
-     * #sequencedKeySet sequencedKeySet} view of the {@link #reversed reversed} view of
-     * this map. Each of its other methods calls the corresponding method of the {@link
-     * #keySet keySet} view of this map.
-     *
-     * @return a {@code SequencedSet} view of this map's {@code keySet}
-     */
-    default SequencedSet<K> sequencedKeySet() {
-        class SeqKeySet extends AbstractMap.ViewCollection<K> implements SequencedSet<K> {
-            Collection<K> view() {
-                return SequencedMap.this.keySet();
-            }
-            public SequencedSet<K> reversed() {
-                return SequencedMap.this.reversed().sequencedKeySet();
-            }
-            public boolean equals(Object other) {
-                return view().equals(other);
-            }
-            public int hashCode() {
-                return view().hashCode();
-            }
-        }
-        return new SeqKeySet();
-    }
-
-    /**
-     * Returns a {@code SequencedCollection} view of this map's {@link #values values} collection.
-     *
-     * @implSpec
-     * The implementation in this interface returns a {@code SequencedCollection} instance
-     * that behaves as follows. Its {@link SequencedCollection#add add} and {@link
-     * SequencedCollection#addAll addAll} methods throw {@link UnsupportedOperationException}.
-     * Its {@link SequencedCollection#reversed reversed} method returns the {@link
-     * #sequencedValues sequencedValues} view of the {@link #reversed reversed} view of
-     * this map. Its {@link Object#equals equals} and {@link Object#hashCode hashCode} methods
-     * are inherited from {@link Object}. Each of its other methods calls the corresponding
-     * method of the {@link #values values} view of this map.
-     *
-     * @return a {@code SequencedCollection} view of this map's {@code values} collection
-     */
-    default SequencedCollection<V> sequencedValues() {
-        class SeqValues extends AbstractMap.ViewCollection<V> implements SequencedCollection<V> {
-            Collection<V> view() {
-                return SequencedMap.this.values();
-            }
-            public SequencedCollection<V> reversed() {
-                return SequencedMap.this.reversed().sequencedValues();
-            }
-        }
-        return new SeqValues();
-    }
-
-    /**
-     * Returns a {@code SequencedSet} view of this map's {@link #entrySet entrySet}.
-     *
-     * @implSpec
-     * The implementation in this interface returns a {@code SequencedSet} instance
-     * that behaves as follows. Its {@link SequencedSet#add add} and {@link
-     * SequencedSet#addAll addAll} methods throw {@link UnsupportedOperationException}.
-     * Its {@link SequencedSet#reversed reversed} method returns the {@link
-     * #sequencedEntrySet sequencedEntrySet} view of the {@link #reversed reversed} view of
-     * this map. Each of its other methods calls the corresponding method of the {@link
-     * #entrySet entrySet} view of this map.
-     *
-     * @return a {@code SequencedSet} view of this map's {@code entrySet}
-     */
-    default SequencedSet<Map.Entry<K, V>> sequencedEntrySet() {
-        class SeqEntrySet extends AbstractMap.ViewCollection<Map.Entry<K, V>>
-                implements SequencedSet<Map.Entry<K, V>> {
-            Collection<Map.Entry<K, V>> view() {
-                return SequencedMap.this.entrySet();
-            }
-            public SequencedSet<Map.Entry<K, V>> reversed() {
-                return SequencedMap.this.reversed().sequencedEntrySet();
-            }
-            public boolean equals(Object other) {
-                return view().equals(other);
-            }
-            public int hashCode() {
-                return view().hashCode();
-            }
-        }
-        return new SeqEntrySet();
-    }
-}
+     * 此接口的实现获取此 Map 的 entrySet 的迭代器。
+     * 如果迭代器有一个元素，它会在迭代器上调用 {@code remove}，然后
